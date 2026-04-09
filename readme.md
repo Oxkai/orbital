@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="Orbital AMM Logo"/>
+  <img src="public/logo.png" alt="Orbital AMM Logo"/>
 </p>
 
 # Orbital 
