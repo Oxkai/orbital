@@ -1,8 +1,9 @@
+
+# Orbital
+
 <p align="center">
   <img src="public/logo.png" alt="Orbital AMM Logo"/>
 </p>
-
-# Orbital 
 
 Orbital AMM is an innovative automated market maker (AMM) that extends Uniswap V3's concentrated liquidity concept to multi-asset stablecoin pools. Based on the Paradigm Orbital paper, it uses geometric invariants to enable efficient trading across N assets while providing superior capital efficiency and depeg protection.
 
