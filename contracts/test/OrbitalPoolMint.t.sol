@@ -233,14 +233,15 @@ contract OrbitalPoolMintTest is Test {
 
     // ── Multi-LP mint ─────────────────────────────────────────────────────
 
-    function test_two_LPs_same_k_create_separate_ticks() public {
+    function test_two_LPs_same_k_merged_tick() public {
         uint256 r = 100 * WAD;
         uint256 k = TickLib.kMin(r, 2) + WAD;
 
         payer.pay(pool, ALICE, k, r);
         payer.pay(pool, BOB,   k, r);
 
-        assertEq(pool.numTicks(), 2, "no merging in v1");
+        // Same-k ticks are merged.
+        assertEq(pool.numTicks(), 1, "merged into one tick");
 
         (uint256 sumX, , uint256 rInt, , , ) = pool.slot0();
         assertEq(rInt, 2 * r);
@@ -248,9 +249,9 @@ contract OrbitalPoolMintTest is Test {
         uint256 perAsset = SphereMath.equalPricePoint(r, 2);
         assertEq(sumX, 2 * 2 * perAsset);
 
-        // Two distinct positions exist.
+        // Two distinct positions exist, both at tick 0.
         bytes32 keyA = keccak256(abi.encodePacked(ALICE, uint256(0)));
-        bytes32 keyB = keccak256(abi.encodePacked(BOB,   uint256(1)));
+        bytes32 keyB = keccak256(abi.encodePacked(BOB,   uint256(0)));
         (, uint256 prA) = pool.positions(keyA);
         (, uint256 prB) = pool.positions(keyB);
         assertEq(prA, r);

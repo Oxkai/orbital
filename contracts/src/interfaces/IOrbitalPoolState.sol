@@ -51,6 +51,9 @@ interface IOrbitalPoolState {
         view
         returns (uint256);
 
+    /// @notice Total number of ticks in the pool.
+    function numTicks() external view returns (uint256);
+
     /// @notice Tick metadata for the given tick index.
     function ticks(uint256 index) external view returns (TickLib.Tick memory);
 

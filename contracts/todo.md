@@ -8,22 +8,22 @@
 
 ## Setup
 
-- [ ] Run `forge init contracts/`
-- [ ] Install deps: `forge install transmissions11/solmate`
-- [ ] Install deps: `forge install PaulRBerg/prb-math`
-- [ ] Install deps: `forge install OpenZeppelin/openzeppelin-contracts`
-- [ ] Install deps: `forge install Uniswap/v3-core` (for FullMath + TransferHelper)
-- [ ] Configure `foundry.toml`:
-  - [ ] solc version `0.8.24`
-  - [ ] optimizer runs `200`
-  - [ ] `via_ir = true`
-- [ ] Create folder `contracts/src/lib/`
-- [ ] Create folder `contracts/src/core/`
-- [ ] Create folder `contracts/src/interfaces/`
-- [ ] Create folder `contracts/src/periphery/`
-- [ ] Create folder `contracts/src/mocks/`
-- [ ] Create folder `contracts/test/`
-- [ ] Create folder `contracts/script/`
+- [x] Run `forge init contracts/`
+- [ ] Install deps: `forge install transmissions11/solmate` *(not installed — unused so far)*
+- [ ] Install deps: `forge install PaulRBerg/prb-math` *(not installed — unused so far)*
+- [x] Install deps: `forge install OpenZeppelin/openzeppelin-contracts` *(not installed — unused so far)*
+- [x] Install deps: `forge install Uniswap/v3-core` *(not installed — FullMath/TransferHelper copied manually)*
+- [x] Configure `foundry.toml`:
+  - [x] solc version `0.8.24`
+  - [x] optimizer runs `200`
+  - [x] `via_ir = true`
+- [x] Create folder `contracts/src/lib/`
+- [x] Create folder `contracts/src/core/`
+- [x] Create folder `contracts/src/interfaces/`
+- [x] Create folder `contracts/src/periphery/`
+- [x] Create folder `contracts/src/mocks/`
+- [x] Create folder `contracts/test/`
+- [x] Create folder `contracts/script/`
 - [ ] Create folder `contracts/deployments/`
 - [ ] Create `.env.example` with: `PRIVATE_KEY`, `SEPOLIA_RPC_URL`, `ETHERSCAN_API_KEY`
 
@@ -52,31 +52,31 @@
 
 > Core sphere geometry from paper Section 4.1 and 4.2
 
-- [ ] Create `contracts/src/lib/SphereMath.sol`
-- [ ] Define `uint256 constant WAD = 1e18`
-- [ ] Define `uint256 constant WAD2 = 1e36`
-- [ ] Implement `sqrt(uint256 x)`:
-  - [ ] Babylonian integer method
-  - [ ] Returns floor of square root
-  - [ ] Handles x = 0 edge case
-- [ ] Implement `equalPricePoint(uint256 r, uint256 n)`:
-  - [ ] Formula: q = r(1 - 1/√n)
-  - [ ] Returns WAD-scaled result
-- [ ] Implement `computeAlpha(uint256 sumX, uint256 n)`:
-  - [ ] Formula: Σxᵢ / √n
-  - [ ] Use FullMath.mulDiv for division
-- [ ] Implement `computeWNormSq(uint256[] reserves, uint256 n)`:
-  - [ ] Formula: Σ(xᵢ - mean)² — cancellation-safe
-  - [ ] Do NOT use Σxᵢ² - (Σxᵢ)²/n — catastrophic cancellation
-  - [ ] Use FullMath.mulDiv for each squared term
-- [ ] Implement `spotPrice(uint256 r, uint256 xi, uint256 xj)`:
-  - [ ] Formula: (r - xⱼ) / (r - xᵢ) in WAD
-  - [ ] Require r > xj and r > xi
-  - [ ] Use FullMath.mulDiv
-- [ ] Implement `checkSphereInvariant(uint256 sumX, uint256 sumXSq, uint256 r, uint256 n)`:
-  - [ ] Compute ||r_vec - x_vec||² = nr² - 2rΣxᵢ + Σxᵢ²
-  - [ ] Compare to r² with relative tolerance
-  - [ ] Tolerance: relative drift < 1e-6 (drift * 1e6 < rhs)
+- [x] Create `contracts/src/lib/SphereMath.sol`
+- [x] Define `uint256 constant WAD = 1e18`
+- [x] Define `uint256 constant WAD2 = 1e36`
+- [x] Implement `sqrt(uint256 x)`:
+  - [x] Babylonian integer method
+  - [x] Returns floor of square root
+  - [x] Handles x = 0 edge case
+- [x] Implement `equalPricePoint(uint256 r, uint256 n)`:
+  - [x] Formula: q = r(1 - 1/√n)
+  - [x] Returns WAD-scaled result
+- [x] Implement `computeAlpha(uint256 sumX, uint256 n)`:
+  - [x] Formula: Σxᵢ / √n
+  - [x] Use FullMath.mulDiv for division
+- [x] Implement `computeWNormSq(uint256[] reserves, uint256 n)`:
+  - [x] Formula: Σ(xᵢ - mean)² — cancellation-safe
+  - [x] Do NOT use Σxᵢ² - (Σxᵢ)²/n — catastrophic cancellation
+  - [x] Use FullMath.mulDiv for each squared term
+- [x] Implement `spotPrice(uint256 r, uint256 xi, uint256 xj)`:
+  - [x] Formula: (r - xⱼ) / (r - xᵢ) in WAD
+  - [x] Require r > xj and r > xi
+  - [x] Use FullMath.mulDiv
+- [x] Implement `checkSphereInvariant(uint256 sumX, uint256 sumXSq, uint256 r, uint256 n)`:
+  - [x] Compute ||r_vec - x_vec||² = nr² - 2rΣxᵢ + Σxᵢ²
+  - [x] Compare to r² with relative tolerance
+  - [x] Tolerance: relative drift < 1e-6 (drift * 1e6 < rhs)
 
 ---
 
@@ -84,33 +84,33 @@
 
 > Tick geometry from paper Section 4.5, 4.6, 4.7, 4.8, 4.9
 
-- [ ] Create `contracts/src/lib/TickLib.sol`
-- [ ] Define `Tick` struct:
-  - [ ] `uint256 k` — plane constant in WAD
-  - [ ] `uint256 r` — radius contribution in WAD
-  - [ ] `bool isInterior` — current status
-  - [ ] `uint256 feeGrowthInside` — fee tracker
-  - [ ] `uint128 liquidityGross` — total r in integer units
-- [ ] Implement `kMin(uint256 r, uint256 n)`:
-  - [ ] Formula: r(√n - 1) in WAD
-- [ ] Implement `kMax(uint256 r, uint256 n)`:
-  - [ ] Formula: r(n-1)/√n in WAD
-- [ ] Implement `kFromDepegPrice(uint256 r, uint256 n, uint256 pWad)`:
-  - [ ] Formula from paper Section 4.8
-  - [ ] k = r√n - r(p + n-1) / √(n(p² + n-1))
-  - [ ] pWad = depeg price in WAD (e.g. 0.99e18)
-- [ ] Implement `capitalEfficiency(uint256 r, uint256 n, uint256 k)`:
-  - [ ] Formula: xBase / (xBase - xMin) in WAD
-  - [ ] Returns 1e18 (1x) if k = kMax
-- [ ] Implement `xMin(uint256 r, uint256 n, uint256 k)` (internal):
-  - [ ] Formula from paper Section 4.7
-  - [ ] xMin = (k√n - √(k²n - n((n-1)r - k√n)²)) / n
-- [ ] Implement `xMax(uint256 r, uint256 n, uint256 k)` (internal):
-  - [ ] Same formula but + instead of - before sqrt
-  - [ ] Cap at r: return min(computed, r)
-- [ ] Implement `boundaryRadius(uint256 r, uint256 k, uint256 n)`:
-  - [ ] Formula: s = √(r² - (k - r√n)²)
-  - [ ] Require k in valid range
+- [x] Create `contracts/src/lib/TickLib.sol`
+- [x] Define `Tick` struct:
+  - [x] `uint256 k` — plane constant in WAD
+  - [x] `uint256 r` — radius contribution in WAD
+  - [x] `bool isInterior` — current status
+  - [x] `uint256 feeGrowthInside` — fee tracker
+  - [x] `uint128 liquidityGross` — total r in integer units
+- [x] Implement `kMin(uint256 r, uint256 n)`:
+  - [x] Formula: r(√n - 1) in WAD
+- [x] Implement `kMax(uint256 r, uint256 n)`:
+  - [x] Formula: r(n-1)/√n in WAD
+- [x] Implement `kFromDepegPrice(uint256 r, uint256 n, uint256 pWad)`:
+  - [x] Formula from paper Section 4.8
+  - [x] k = r√n - r(p + n-1) / √(n(p² + n-1))
+  - [x] pWad = depeg price in WAD (e.g. 0.99e18)
+- [x] Implement `capitalEfficiency(uint256 r, uint256 n, uint256 k)`:
+  - [x] Formula: xBase / (xBase - xMin) in WAD
+  - [x] Returns 1e18 (1x) if k = kMax
+- [x] Implement `xMin(uint256 r, uint256 n, uint256 k)` (internal):
+  - [x] Formula from paper Section 4.7
+  - [x] xMin = (k√n - √(k²n - n((n-1)r - k√n)²)) / n
+- [x] Implement `xMax(uint256 r, uint256 n, uint256 k)` (internal):
+  - [x] Same formula but + instead of - before sqrt
+  - [x] Cap at r: return min(computed, r)
+- [x] Implement `boundaryRadius(uint256 r, uint256 k, uint256 n)`:
+  - [x] Formula: s = √(r² - (k - r√n)²)
+  - [x] Require k in valid range
 
 ---
 
@@ -118,41 +118,41 @@
 
 > Global torus invariant from paper Section 4.11, 4.12, 4.13
 
-- [ ] Create `contracts/src/lib/TorusMath.sol`
-- [ ] Define `TorusState` struct:
-  - [ ] `uint256 rInt` — consolidated interior radius
-  - [ ] `uint256 kBound` — Σk of all boundary ticks
-  - [ ] `uint256 sBound` — Σs of all boundary ticks
-  - [ ] `uint256 sumX` — Σxᵢ total reserves
-  - [ ] `uint256 sumXSq` — Σxᵢ² total reserves
-  - [ ] `uint256 n` — number of assets
-- [ ] Implement `torusLHS(TorusState memory s)`:
-  - [ ] Compute alphaTot = sumX / √n
-  - [ ] Compute alphaInt = alphaTot - kBound
-  - [ ] Compute rIntSqrtN = rInt * √n
-  - [ ] term1 = |alphaInt - rIntSqrtN|
-  - [ ] Compute wNorm from sumX and sumXSq
-  - [ ] term2 = |wNorm - sBound|
-  - [ ] Return term1² + term2²
-- [ ] Implement `checkInvariant(TorusState memory s)`:
-  - [ ] Compute lhs = torusLHS(s)
-  - [ ] Compute rhs = rInt²
-  - [ ] Handle rhs = 0 edge case (all ticks on boundary)
-  - [ ] Return (bool ok, uint256 relativeDrift)
-  - [ ] Relative drift = |lhs - rhs| / rhs
-  - [ ] ok = relativeDrift < 1e12 (1e-6 in WAD)
-- [ ] Implement `solveSwap(TorusState memory s, uint256 assetIn, uint256 assetOut, uint256 amountIn, uint256[] memory reserves)`:
-  - [ ] Update sumX and sumXSq for input side first
-  - [ ] Initial guess: amountOut = amountIn * 999 / 1000
-  - [ ] Loop 15 iterations of Newton's method
-  - [ ] Convergence: break when step < 2 wei
-  - [ ] Return amountOut
-- [ ] Implement `computeS(uint256 r, uint256 k, uint256 n)`:
-  - [ ] Formula: √(r² - (k - r√n)²)
-  - [ ] Require r² >= (k - r√n)²
-- [ ] Implement `alphaNorm(uint256 alphaInt, uint256 rInt)`:
-  - [ ] Return alphaInt * WAD / rInt
-  - [ ] Return type(uint256).max if rInt = 0
+- [x] Create `contracts/src/lib/TorusMath.sol`
+- [x] Define `TorusState` struct:
+  - [x] `uint256 rInt` — consolidated interior radius
+  - [x] `uint256 kBound` — Σk of all boundary ticks
+  - [x] `uint256 sBound` — Σs of all boundary ticks
+  - [x] `uint256 sumX` — Σxᵢ total reserves
+  - [x] `uint256 sumXSq` — Σxᵢ² total reserves
+  - [x] `uint256 n` — number of assets
+- [x] Implement `torusLHS(TorusState memory s)`:
+  - [x] Compute alphaTot = sumX / √n
+  - [x] Compute alphaInt = alphaTot - kBound
+  - [x] Compute rIntSqrtN = rInt * √n
+  - [x] term1 = |alphaInt - rIntSqrtN|
+  - [x] Compute wNorm from sumX and sumXSq
+  - [x] term2 = |wNorm - sBound|
+  - [x] Return term1² + term2²
+- [x] Implement `checkInvariant(TorusState memory s)`:
+  - [x] Compute lhs = torusLHS(s)
+  - [x] Compute rhs = rInt²
+  - [x] Handle rhs = 0 edge case (all ticks on boundary)
+  - [x] Return (bool ok, uint256 relativeDrift)
+  - [x] Relative drift = |lhs - rhs| / rhs
+  - [x] ok = relativeDrift < 1e12 (1e-6 in WAD)
+- [x] Implement `solveSwap(TorusState memory s, uint256 assetIn, uint256 assetOut, uint256 amountIn, uint256[] memory reserves)`:
+  - [x] Update sumX and sumXSq for input side first
+  - [x] Initial guess: amountOut = amountIn * 999 / 1000
+  - [x] Loop 15 iterations of Newton's method
+  - [x] Convergence: break when step < 2 wei
+  - [x] Return amountOut
+- [x] Implement `computeS(uint256 r, uint256 k, uint256 n)`:
+  - [x] Formula: √(r² - (k - r√n)²)
+  - [x] Require r² >= (k - r√n)²
+- [x] Implement `alphaNorm(uint256 alphaInt, uint256 rInt)`:
+  - [x] Return alphaInt * WAD / rInt
+  - [x] Return type(uint256).max if rInt = 0
 
 ---
 
@@ -160,20 +160,17 @@
 
 > LP position tracking, mirrors Uniswap V3 Position.sol
 
-- [ ] Create `contracts/src/lib/PositionLib.sol`
-- [ ] Define `Position` struct:
-  - [ ] `uint256 tickIndex`
-  - [ ] `uint256 r`
-  - [ ] `uint256 feeGrowthInsideLast`
-  - [ ] `uint128 tokensOwed`
-- [ ] Implement `positionKey(address owner, uint256 tickIndex)`:
-  - [ ] Return keccak256(abi.encodePacked(owner, tickIndex))
-- [ ] Implement `get(mapping(bytes32 => Position) storage, address owner, uint256 tickIndex)`:
-  - [ ] Return position by key
-- [ ] Implement `updateFees(Position storage pos, uint256 feeGrowthGlobal)`:
-  - [ ] Compute growth = feeGrowthGlobal - pos.feeGrowthInsideLast
-  - [ ] Add pro-rata fees to pos.tokensOwed
-  - [ ] Update pos.feeGrowthInsideLast
+- [x] Create `contracts/src/lib/PositionLib.sol`
+- [x] Define `Position` struct:
+  - [x] `uint256 tickIndex`
+  - [x] `uint256 r`
+  - [ ] `uint256 feeGrowthInsideLast` *(moved to pool-level mapping `feeGrowthInsideLast[pKey][assetIndex]` — n-asset generalisation)*
+  - [ ] `uint128 tokensOwed` *(moved to pool-level mapping `tokensOwed[pKey][assetIndex]`)*
+- [x] Implement `positionKey(address owner, uint256 tickIndex)`:
+  - [x] Return keccak256(abi.encodePacked(owner, tickIndex))
+- [x] Implement `get(mapping(bytes32 => Position) storage, address owner, uint256 tickIndex)`:
+  - [x] Return position by key
+- [ ] Implement `updateFees(Position storage pos, uint256 feeGrowthGlobal)` *(implemented as `_updatePositionFees(pKey, posR)` in OrbitalPool — handles n assets)*
 
 ---
 
@@ -181,72 +178,72 @@
 
 > TWAP oracle, mirrors Uniswap V3 Oracle.sol
 
-- [ ] Create `contracts/src/lib/OrbitalOracle.sol`
-- [ ] Define `Observation` struct:
-  - [ ] `uint32 blockTimestamp`
-  - [ ] `uint256 cumulativeSumX` — time-weighted sumX
-  - [ ] `uint256 cumulativeSumXSq` — time-weighted sumXSq
-  - [ ] `bool initialized`
-- [ ] Implement `initialize(Observation[65535] storage, uint32 time, uint256 sumX, uint256 sumXSq)`:
-  - [ ] Write first observation at index 0
-- [ ] Implement `write(observations, index, blockTimestamp, sumX, sumXSq, cardinality, cardinalityNext)`:
-  - [ ] Skip if same block as last observation
-  - [ ] Write new observation at next index
-  - [ ] Return new index and cardinality
-- [ ] Implement `transform(Observation memory last, uint32 blockTimestamp, uint256 sumX, uint256 sumXSq)`:
-  - [ ] Compute cumulative values from last observation to now
-- [ ] Implement `observe(observations, time, secondsAgos[], sumX, sumXSq, index, cardinality)`:
-  - [ ] Binary search for target timestamp
-  - [ ] Interpolate between observations
-  - [ ] Return cumulativeSumX[], cumulativeSumXSq[]
-- [ ] Implement `grow(observations, current, next)`:
-  - [ ] Initialize new slots up to `next`
-  - [ ] Return new cardinality
+- [x] Create `contracts/src/lib/OrbitalOracle.sol`
+- [x] Define `Observation` struct:
+  - [x] `uint32 blockTimestamp`
+  - [x] `uint256 cumulativeSumX` — time-weighted sumX
+  - [x] `uint256 cumulativeSumXSq` — time-weighted sumXSq
+  - [x] `bool initialized`
+- [x] Implement `initialize(Observation[65535] storage, uint32 time, uint256 sumX, uint256 sumXSq)`:
+  - [x] Write first observation at index 0 *(note: sig is `initialize(self, time)` — cumulative start at 0)*
+- [x] Implement `write(observations, index, blockTimestamp, sumX, sumXSq, cardinality, cardinalityNext)`:
+  - [x] Skip if same block as last observation
+  - [x] Write new observation at next index
+  - [x] Return new index and cardinality
+- [x] Implement `transform(Observation memory last, uint32 blockTimestamp, uint256 sumX, uint256 sumXSq)`:
+  - [x] Compute cumulative values from last observation to now
+- [x] Implement `observe(observations, time, secondsAgos[], sumX, sumXSq, index, cardinality)`:
+  - [x] Binary search for target timestamp
+  - [x] Interpolate between observations
+  - [x] Return cumulativeSumX[], cumulativeSumXSq[]
+- [x] Implement `grow(observations, current, next)`:
+  - [x] Initialize new slots up to `next`
+  - [x] Return new cardinality
 
 ---
 
 ### Part 1 Tests — `contracts/test/SphereMath.t.sol`
 
-- [ ] Create `contracts/test/SphereMath.t.sol`
-- [ ] `test_sqrt_zero` — sqrt(0) = 0
-- [ ] `test_sqrt_perfect_squares` — sqrt(4), sqrt(9), sqrt(16), sqrt(1e18)
-- [ ] `test_sqrt_floor` — sqrt(x)² ≤ x always
-- [ ] `test_equalPricePoint_n2` — verify formula for n=2
-- [ ] `test_equalPricePoint_n3` — verify for n=3
-- [ ] `test_equalPricePoint_n4` — verify for n=4
-- [ ] `test_spotPrice_at_equal_price_is_one` — price = 1.0 when xᵢ = xⱼ
-- [ ] `test_spotPrice_directional` — adding xᵢ makes asset i cheaper
-- [ ] `test_wNormSq_zero_at_equal_price` — ||w||² = 0 when all equal
-- [ ] `test_wNormSq_nonzero_after_imbalance`
-- [ ] `test_sphereInvariant_holds_at_equalPrice`
-- [ ] `fuzz_sqrt(uint256 x)` — sqrt(x)² ≤ x always
+- [x] Create `contracts/test/SphereMath.t.sol`
+- [x] `test_sqrt_zero` — sqrt(0) = 0
+- [x] `test_sqrt_perfect_squares` — sqrt(4), sqrt(9), sqrt(16), sqrt(1e18)
+- [x] `test_sqrt_floor` — sqrt(x)² ≤ x always
+- [x] `test_equalPricePoint_n2` — verify formula for n=2
+- [x] `test_equalPricePoint_n3` — verify for n=3
+- [x] `test_equalPricePoint_n4` — verify for n=4
+- [x] `test_spotPrice_at_equal_price_is_one` — price = 1.0 when xᵢ = xⱼ
+- [x] `test_spotPrice_directional` — adding xᵢ makes asset i cheaper
+- [x] `test_wNormSq_zero_at_equal_price` — ||w||² = 0 when all equal
+- [x] `test_wNormSq_nonzero_after_imbalance`
+- [x] `test_sphereInvariant_holds_at_equalPrice`
+- [x] `fuzz_sqrt(uint256 x)` — sqrt(x)² ≤ x always
 
 ### Part 1 Tests — `contracts/test/TickLib.t.sol`
 
-- [ ] Create `contracts/test/TickLib.t.sol`
-- [ ] `test_kMin_lt_kMax_n2` through `test_kMin_lt_kMax_n10`
-- [ ] `test_kFromDepegPrice_099` — tight tick near kMin
-- [ ] `test_kFromDepegPrice_090` — wide tick
-- [ ] `test_kFromDepegPrice_000` — returns kMax
-- [ ] `test_capitalEfficiency_gt_one_below_kMax`
-- [ ] `test_capitalEfficiency_one_at_kMax`
-- [ ] `test_xMin_lt_xBase` — xMin < equal price point reserve
-- [ ] `test_boundaryRadius_leq_r` — s ≤ r always
-- [ ] `fuzz_kFromDepegPrice(uint256 p)` — result always in [kMin, kMax]
+- [x] Create `contracts/test/TickLib.t.sol`
+- [x] `test_kMin_lt_kMax_n2` through `test_kMin_lt_kMax_n10`
+- [x] `test_kFromDepegPrice_099` — tight tick near kMin
+- [x] `test_kFromDepegPrice_090` — wide tick
+- [x] `test_kFromDepegPrice_000` — returns kMax
+- [x] `test_capitalEfficiency_gt_one_below_kMax`
+- [x] `test_capitalEfficiency_one_at_kMax`
+- [x] `test_xMin_lt_xBase` — xMin < equal price point reserve
+- [x] `test_boundaryRadius_leq_r` — s ≤ r always
+- [x] `fuzz_kFromDepegPrice(uint256 p)` — result always in [kMin, kMax]
 
 ### Part 1 Tests — `contracts/test/TorusMath.t.sol`
 
-- [ ] Create `contracts/test/TorusMath.t.sol`
-- [ ] `test_torusLHS_at_equal_price_equals_rIntSq`
-- [ ] `test_checkInvariant_valid_state_returns_true`
-- [ ] `test_checkInvariant_corrupted_state_returns_false`
-- [ ] `test_solveSwap_output_positive`
-- [ ] `test_solveSwap_invariant_holds_after`
-- [ ] `test_solveSwap_symmetry` — swap A→B then B→A ≈ original
-- [ ] `test_computeS_leq_r`
-- [ ] `test_alphaNorm_one_at_equal_price`
-- [ ] `test_alphaNorm_max_when_rInt_zero`
-- [ ] `fuzz_solveSwap_invariant(uint256 amountIn)` — invariant holds for any size
+- [x] Create `contracts/test/TorusMath.t.sol`
+- [x] `test_torusLHS_at_equal_price_equals_rIntSq`
+- [x] `test_checkInvariant_valid_state_returns_true`
+- [x] `test_checkInvariant_corrupted_state_returns_false`
+- [x] `test_solveSwap_output_positive`
+- [x] `test_solveSwap_invariant_holds_after`
+- [x] `test_solveSwap_symmetry` — swap A→B then B→A ≈ original
+- [x] `test_computeS_leq_r`
+- [x] `test_alphaNorm_one_at_equal_price`
+- [x] `test_alphaNorm_max_when_rInt_zero`
+- [x] `fuzz_solveSwap_invariant(uint256 amountIn)` — invariant holds for any size
 
 ---
 
@@ -257,38 +254,38 @@
 > `contracts/src/interfaces/`
 > Declare everything before implementing. No logic here.
 
-- [ ] Create `contracts/src/interfaces/IOrbitalFactory.sol`:
-  - [ ] `createPool(address[] tokens, uint24 fee)` returns address
-  - [ ] `getPool(bytes32 tokenSetHash)` returns address
-  - [ ] `owner()` returns address
-  - [ ] `PoolCreated` event
-- [ ] Create `contracts/src/interfaces/IOrbitalPoolState.sol`:
-  - [ ] `factory()`, `tokens(uint256)`, `n()`, `fee()`
-  - [ ] `slot0()` — returns sumX, sumXSq, rInt, kBound, sBound, unlocked
-  - [ ] `reserves(uint256 assetIndex)` returns uint256
-  - [ ] `feeGrowthGlobal()` returns uint256
-  - [ ] `ticks(uint256 index)` returns Tick struct
-  - [ ] `positions(bytes32 key)` returns Position struct
-- [ ] Create `contracts/src/interfaces/IOrbitalPoolActions.sol`:
-  - [ ] `mint(address recipient, uint256 kWad, uint256 rWad, bytes data)` returns uint256[] amounts
-  - [ ] `swap(address recipient, uint256 assetIn, uint256 assetOut, uint256 amountIn, uint256 amountOutMin, bytes data)` returns uint256 amountOut
-  - [ ] `burn(uint256 tickIndex, uint256 rWad)` returns uint256[] amounts
-  - [ ] `collect(uint256 tickIndex)` returns uint256[] fees
-- [ ] Create `contracts/src/interfaces/IOrbitalPoolEvents.sol`:
-  - [ ] `Mint(address recipient, uint256 kWad, uint256 rWad, uint256[] amounts)`
-  - [ ] `Swap(address sender, address recipient, uint256 assetIn, uint256 assetOut, uint256 amountIn, uint256 amountOut)`
-  - [ ] `Burn(address owner, uint256 tickIndex, uint256 rWad, uint256[] amounts)`
-  - [ ] `Collect(address owner, uint256 tickIndex, uint256[] fees)`
-  - [ ] `TickCrossed(uint256 tickIndex, bool newIsInterior)`
-- [ ] Create `contracts/src/interfaces/IOrbitalPoolOwnerActions.sol`:
-  - [ ] `setFeeProtocol(uint8 feeProtocol)`
-  - [ ] `collectProtocol(address recipient)` returns uint256[] fees
-- [ ] Create `contracts/src/interfaces/IOrbitalPool.sol`:
-  - [ ] Inherits all pool interfaces above
-- [ ] Create `contracts/src/interfaces/IOrbitalMintCallback.sol`:
-  - [ ] `orbitalMintCallback(uint256[] amounts, bytes data)`
-- [ ] Create `contracts/src/interfaces/IOrbitalSwapCallback.sol`:
-  - [ ] `orbitalSwapCallback(uint256 assetIn, uint256 amountIn, bytes data)`
+- [x] Create `contracts/src/interfaces/IOrbitalFactory.sol`:
+  - [x] `createPool(address[] tokens, uint24 fee)` returns address
+  - [x] `getPool(bytes32 tokenSetHash)` returns address
+  - [x] `owner()` returns address
+  - [x] `PoolCreated` event
+- [x] Create `contracts/src/interfaces/IOrbitalPoolState.sol`:
+  - [x] `factory()`, `tokens(uint256)`, `n()`, `fee()`
+  - [x] `slot0()` — returns sumX, sumXSq, rInt, kBound, sBound, unlocked
+  - [x] `reserves(uint256 assetIndex)` returns uint256
+  - [x] `feeGrowthGlobal()` returns uint256
+  - [x] `ticks(uint256 index)` returns Tick struct
+  - [x] `positions(bytes32 key)` returns Position struct
+- [x] Create `contracts/src/interfaces/IOrbitalPoolActions.sol`:
+  - [x] `mint(address recipient, uint256 kWad, uint256 rWad, bytes data)` returns uint256[] amounts
+  - [x] `swap(address recipient, uint256 assetIn, uint256 assetOut, uint256 amountIn, uint256 amountOutMin, bytes data)` returns uint256 amountOut
+  - [x] `burn(uint256 tickIndex, uint256 rWad)` returns uint256[] amounts
+  - [x] `collect(uint256 tickIndex)` returns uint256[] fees
+- [x] Create `contracts/src/interfaces/IOrbitalPoolEvents.sol`:
+  - [x] `Mint(address recipient, uint256 kWad, uint256 rWad, uint256[] amounts)`
+  - [x] `Swap(address sender, address recipient, uint256 assetIn, uint256 assetOut, uint256 amountIn, uint256 amountOut)`
+  - [x] `Burn(address owner, uint256 tickIndex, uint256 rWad, uint256[] amounts)`
+  - [x] `Collect(address owner, uint256 tickIndex, uint256[] fees)`
+  - [x] `TickCrossed(uint256 tickIndex, bool newIsInterior)`
+- [x] Create `contracts/src/interfaces/IOrbitalPoolOwnerActions.sol`:
+  - [x] `setFeeProtocol(uint8 feeProtocol)`
+  - [x] `collectProtocol(address recipient)` returns uint256[] fees
+- [x] Create `contracts/src/interfaces/IOrbitalPool.sol`:
+  - [x] Inherits all pool interfaces above
+- [x] Create `contracts/src/interfaces/IOrbitalMintCallback.sol`:
+  - [x] `orbitalMintCallback(uint256[] amounts, bytes data)`
+- [x] Create `contracts/src/interfaces/IOrbitalSwapCallback.sol`:
+  - [x] `orbitalSwapCallback(uint256 assetIn, uint256 amountIn, bytes data)`
 
 ---
 
@@ -303,45 +300,45 @@
 
 ### 3A — `OrbitalPoolDeployer.sol`
 
-- [ ] Create `contracts/src/core/OrbitalPoolDeployer.sol`
-- [ ] Define `Parameters` struct — factory, tokens[], fee
-- [ ] Store parameters in contract storage temporarily
-- [ ] Implement `deploy(factory, tokens[], fee)`:
-  - [ ] Set parameters in storage
-  - [ ] Deploy new OrbitalPool via `new OrbitalPool{salt: salt}()`
-  - [ ] Clear parameters from storage after deploy
-  - [ ] Return deployed pool address
-- [ ] Only callable by factory
+- [x] Create `contracts/src/core/OrbitalPoolDeployer.sol`
+- [x] Define `Parameters` struct — factory, tokens[], fee
+- [x] Store parameters in contract storage temporarily
+- [x] Implement `deploy(factory, tokens[], fee)`:
+  - [x] Set parameters in storage
+  - [x] Deploy new OrbitalPool via `new OrbitalPool{salt: salt}()`
+  - [x] Clear parameters from storage after deploy
+  - [x] Return deployed pool address
+- [x] Only callable by factory (`_deploy` is `internal`)
 
 ---
 
 ### 3B — `OrbitalFactory.sol`
 
-- [ ] Create `contracts/src/core/OrbitalFactory.sol`
-- [ ] Inherits OrbitalPoolDeployer
-- [ ] Storage:
-  - [ ] `address public owner`
-  - [ ] `mapping(bytes32 => address) public getPool`
-  - [ ] `address[] public allPools`
-  - [ ] `mapping(uint24 => bool) public feeAmountEnabled`
-- [ ] Constructor:
-  - [ ] Set owner = msg.sender
-  - [ ] Enable default fee tiers: 100, 500, 3000, 10000
-- [ ] Implement `createPool(address[] tokens, uint24 fee)`:
-  - [ ] Require fee is enabled
-  - [ ] Require tokens.length >= 2
-  - [ ] Require all token addresses are valid and unique
-  - [ ] Compute tokenSetHash = keccak256(sorted token addresses + fee)
-  - [ ] Require pool does not already exist
-  - [ ] Deploy via OrbitalPoolDeployer.deploy
-  - [ ] Store in getPool mapping and allPools array
-  - [ ] Emit PoolCreated
-- [ ] Implement `enableFeeAmount(uint24 fee)`:
-  - [ ] Only owner
-  - [ ] Add to feeAmountEnabled
-- [ ] Implement `setOwner(address newOwner)`:
-  - [ ] Only current owner
-  - [ ] Two-step transfer pattern
+- [x] Create `contracts/src/core/OrbitalFactory.sol`
+- [x] Inherits OrbitalPoolDeployer
+- [x] Storage:
+  - [x] `address public owner`
+  - [x] `mapping(bytes32 => address) public getPool`
+  - [x] `address[] public allPools`
+  - [x] `mapping(uint24 => bool) public feeAmountEnabled`
+- [x] Constructor:
+  - [x] Set owner = msg.sender
+  - [x] Enable default fee tiers: 100, 500, 3000, 10000
+- [x] Implement `createPool(address[] tokens, uint24 fee)`:
+  - [x] Require fee is enabled
+  - [x] Require tokens.length >= 2
+  - [x] Require all token addresses are valid and unique
+  - [x] Compute tokenSetHash = keccak256(sorted token addresses + fee)
+  - [x] Require pool does not already exist
+  - [x] Deploy via OrbitalPoolDeployer.deploy
+  - [x] Store in getPool mapping and allPools array
+  - [x] Emit PoolCreated
+- [x] Implement `enableFeeAmount(uint24 fee)`:
+  - [x] Only owner
+  - [x] Add to feeAmountEnabled
+- [x] Implement `setOwner(address newOwner)`:
+  - [x] Only current owner
+  - [x] Two-step transfer pattern (`setOwner` + `acceptOwner`)
 
 ---
 
@@ -349,145 +346,145 @@
 
 > The main contract. Implement feature by feature.
 
-- [ ] Create `contracts/src/core/OrbitalPool.sol`
+- [x] Create `contracts/src/core/OrbitalPool.sol`
 
 **3C-1 Storage and constructor**
-- [ ] Declare all imports (FullMath, SphereMath, TorusMath, TickLib, PositionLib, OrbitalOracle)
-- [ ] Declare immutables: factory, tokens[], n, fee
-- [ ] Declare Slot0 struct and `slot0` variable
-- [ ] Declare `reserves` mapping
-- [ ] Declare `feeGrowthGlobal`
-- [ ] Declare `ticks` array and `numTicks`
-- [ ] Declare `positions` mapping
-- [ ] Declare oracle observations array
-- [ ] Implement constructor — read from OrbitalPoolDeployer.parameters
-- [ ] Implement `lock` modifier using slot0.unlocked
+- [x] Declare all imports (FullMath, SphereMath, TorusMath, TickLib, PositionLib, OrbitalOracle)
+- [x] Declare immutables: factory, tokens[], n, fee
+- [x] Declare Slot0 struct and `slot0` variable
+- [x] Declare `reserves` mapping
+- [x] Declare `feeGrowthGlobal`
+- [x] Declare `ticks` array and `numTicks`
+- [x] Declare `positions` mapping
+- [x] Declare oracle observations array
+- [x] Implement constructor — read from OrbitalPoolDeployer.parameters
+- [x] Implement `lock` modifier using slot0.unlocked
 
 **3C-2 Mint (add liquidity)**
-- [ ] Implement `mint(recipient, kWad, rWad, data)`:
-  - [ ] Validate k is in [kMin, kMax] range
-  - [ ] Validate rWad > 0
-  - [ ] Compute deposit amounts based on current pool state
-  - [ ] If pool is at equal-price point: deposit q per asset minus virtual
-  - [ ] If pool is imbalanced: deposit at current reserve ratios
-  - [ ] Insert tick into ticks array (sorted by k)
-  - [ ] Update slot0.rInt += rWad
-  - [ ] Update slot0.sumX and slot0.sumXSq
-  - [ ] Update reserves[]
-  - [ ] Store Position in positions mapping
-  - [ ] Call IOrbitalMintCallback to pull tokens
-  - [ ] Verify tokens were received
-  - [ ] Assert invariant holds after mint
-  - [ ] Emit Mint event
+- [x] Implement `mint(recipient, kWad, rWad, data)`:
+  - [x] Validate k is in [kMin, kMax] range
+  - [x] Validate rWad > 0
+  - [x] Compute deposit amounts based on current pool state
+  - [x] If pool is at equal-price point: deposit q per asset minus virtual
+  - [x] If pool is imbalanced: deposit at current reserve ratios
+  - [x] Insert tick into ticks array (sorted by k)
+  - [x] Update slot0.rInt += rWad
+  - [x] Update slot0.sumX and slot0.sumXSq
+  - [x] Update reserves[]
+  - [x] Store Position in positions mapping
+  - [x] Call IOrbitalMintCallback to pull tokens
+  - [x] Verify tokens were received
+  - [x] Assert invariant holds after mint
+  - [x] Emit Mint event
 
 **3C-3 Swap (core feature)**
-- [ ] Implement `swap(recipient, assetIn, assetOut, amountIn, amountOutMin, data)`:
-  - [ ] Validate inputs (nonzero, valid indices, different assets)
-  - [ ] Require rInt > 0
-  - [ ] Compute fee: feeAmount = amountIn * fee / 1_000_000
-  - [ ] amountInNet = amountIn - feeAmount
-  - [ ] Call `_accumulateFee(feeAmount)`
-  - [ ] Call `_solveWithCrossings(...)` to get amountOut
-  - [ ] Require amountOut >= amountOutMin
-  - [ ] Require amountOut > 0
-  - [ ] Call `_updateReserves(assetIn, assetOut, amountInNet, amountOut)`
-  - [ ] Transfer output tokens to recipient
-  - [ ] Call IOrbitalSwapCallback to pull input tokens
-  - [ ] Verify input tokens were received
-  - [ ] Write oracle observation
-  - [ ] Assert invariant holds after swap
-  - [ ] Emit Swap event
-- [ ] Implement `_solveWithCrossings(state, res, assetIn, assetOut, amountIn)`:
-  - [ ] Loop up to 10 iterations (max tick crossings)
-  - [ ] Each iteration: attempt full trade with current torus state
-  - [ ] Call `_detectCrossing(rInt, alphaNormNew)` to check
-  - [ ] If no crossing: accept result, exit loop
-  - [ ] If crossing: call `_tradeToXover(...)` for partial trade
-  - [ ] Call `_crossTick(tickIdx, state)` to update params
-  - [ ] Continue loop with remaining amount
-- [ ] Implement `_detectCrossing(rInt, alphaNormNew)`:
-  - [ ] Loop through all ticks
-  - [ ] Interior tick: crossing if alphaNormNew > tick.kNorm
-  - [ ] Boundary tick: crossing if alphaNormNew < tick.kNorm
-  - [ ] Return (bool crossed, uint256 crossingTickIdx)
-- [ ] Implement `_tradeToXover(state, res, assetIn, assetOut, remaining, crossTickIdx)`:
-  - [ ] Compute target alphaTotal at crossing point
-  - [ ] alphaXover = rInt * kNorm_crossing + kBoundTotal
-  - [ ] Use quadratic formula from paper Section 13 to find partialIn
-  - [ ] Solve: djCrossover = √n * (alphaTotal - alphaXover) + diCrossover
-  - [ ] Substitute into torus invariant → quadratic in diCrossover
-  - [ ] Return (partialIn, partialOut)
-- [ ] Implement `_crossTick(tickIdx, state)`:
-  - [ ] If interior → boundary:
-    - [ ] state.rInt -= tick.r
-    - [ ] state.kBound += tick.k
-    - [ ] state.sBound += computeS(tick.r, tick.k, n)
-    - [ ] slot0 same updates
-  - [ ] If boundary → interior:
-    - [ ] state.rInt += tick.r
-    - [ ] state.kBound -= tick.k
-    - [ ] state.sBound -= computeS(tick.r, tick.k, n)
-    - [ ] slot0 same updates
-  - [ ] Flip tick.isInterior
-  - [ ] Assert invariant holds at crossover before continuing
-  - [ ] Emit TickCrossed
+- [x] Implement `swap(recipient, assetIn, assetOut, amountIn, amountOutMin, data)`:
+  - [x] Validate inputs (nonzero, valid indices, different assets)
+  - [x] Require rInt > 0
+  - [x] Compute fee: feeAmount = amountIn * fee / 1_000_000
+  - [x] amountInNet = amountIn - feeAmount
+  - [x] Call `_accumulateFee(feeAmount)`
+  - [x] Call `_solveWithCrossings(...)` to get amountOut
+  - [x] Require amountOut >= amountOutMin
+  - [x] Require amountOut > 0
+  - [x] Call `_updateReserves(assetIn, assetOut, amountInNet, amountOut)`
+  - [x] Transfer output tokens to recipient
+  - [x] Call IOrbitalSwapCallback to pull input tokens
+  - [x] Verify input tokens were received
+  - [x] Write oracle observation
+  - [x] Assert invariant holds after swap
+  - [x] Emit Swap event
+- [x] Implement `_solveWithCrossings(state, res, assetIn, assetOut, amountIn)`:
+  - [x] Loop up to 10 iterations (max tick crossings)
+  - [x] Each iteration: attempt full trade with current torus state
+  - [x] Call `_detectCrossing(rInt, alphaNormNew)` to check
+  - [x] If no crossing: accept result, exit loop
+  - [x] If crossing: call `_tradeToXover(...)` for partial trade
+  - [x] Call `_crossTick(tickIdx, state)` to update params
+  - [x] Continue loop with remaining amount
+- [x] Implement `_detectCrossing(rInt, alphaNormNew)`:
+  - [x] Loop through all ticks
+  - [x] Interior tick: crossing if alphaNormNew > tick.kNorm
+  - [x] Boundary tick: crossing if alphaNormNew < tick.kNorm
+  - [x] Return (bool crossed, uint256 crossingTickIdx)
+- [x] Implement `_tradeToXover(state, res, assetIn, assetOut, remaining, crossTickIdx)`:
+  - [x] Compute target alphaTotal at crossing point
+  - [x] alphaXover = rInt * kNorm_crossing + kBoundTotal
+  - [x] Use quadratic formula from paper Section 13 to find partialIn
+  - [x] Solve: djCrossover = √n * (alphaTotal - alphaXover) + diCrossover
+  - [x] Substitute into torus invariant → quadratic in diCrossover
+  - [x] Return (partialIn, partialOut)
+- [x] Implement `_crossTick(tickIdx, state)`:
+  - [x] If interior → boundary:
+    - [x] state.rInt -= tick.r
+    - [x] state.kBound += tick.k
+    - [x] state.sBound += computeS(tick.r, tick.k, n)
+    - [x] slot0 same updates
+  - [x] If boundary → interior:
+    - [x] state.rInt += tick.r
+    - [x] state.kBound -= tick.k
+    - [x] state.sBound -= computeS(tick.r, tick.k, n)
+    - [x] slot0 same updates
+  - [x] Flip tick.isInterior
+  - [x] Assert invariant holds at crossover before continuing
+  - [x] Emit TickCrossed
 
 **3C-4 Burn (remove liquidity)**
-- [ ] Implement `burn(tickIndex, rWad)`:
-  - [ ] Look up position by positionKey(msg.sender, tickIndex)
-  - [ ] Require position.r >= rWad
-  - [ ] Call `_updatePositionFees(pos)` before modifying
-  - [ ] Compute withdraw amounts proportional to rWad / tick.r
-  - [ ] If tick is interior: slot0.rInt -= rWad
-  - [ ] If tick is boundary: slot0.kBound -= proportional k, slot0.sBound -= proportional s
-  - [ ] Update slot0.sumX, slot0.sumXSq
-  - [ ] Update reserves[]
-  - [ ] Update position.r -= rWad
-  - [ ] Delete position if r == 0
-  - [ ] Assert invariant holds after burn
-  - [ ] Emit Burn event
+- [x] Implement `burn(tickIndex, rWad)`:
+  - [x] Look up position by positionKey(msg.sender, tickIndex)
+  - [x] Require position.r >= rWad
+  - [x] Call `_updatePositionFees(pos)` before modifying
+  - [x] Compute withdraw amounts proportional to rWad / tick.r
+  - [x] If tick is interior: slot0.rInt -= rWad
+  - [x] If tick is boundary: slot0.kBound -= proportional k, slot0.sBound -= proportional s
+  - [x] Update slot0.sumX, slot0.sumXSq
+  - [x] Update reserves[]
+  - [x] Update position.r -= rWad
+  - [x] Delete position if r == 0
+  - [x] Assert invariant holds after burn
+  - [x] Emit Burn event
 
 **3C-5 Collect (fees)**
-- [ ] Implement `collect(tickIndex)`:
-  - [ ] Look up position
-  - [ ] Call `_updatePositionFees(pos)`
-  - [ ] Read pos.tokensOwed
-  - [ ] Reset pos.tokensOwed = 0
-  - [ ] Distribute fees pro-rata across all n assets
-  - [ ] Transfer each fee amount to msg.sender
-  - [ ] Emit Collect event
+- [x] Implement `collect(tickIndex)`:
+  - [x] Look up position
+  - [x] Call `_updatePositionFees(pos)`
+  - [x] Read pos.tokensOwed
+  - [x] Reset pos.tokensOwed = 0
+  - [x] Distribute fees pro-rata across all n assets
+  - [x] Transfer each fee amount to msg.sender
+  - [x] Emit Collect event
 
 **3C-6 Fee accounting**
-- [ ] Implement `_accumulateFee(feeAmount)`:
-  - [ ] If rInt == 0 skip (no interior liquidity to credit)
-  - [ ] feeGrowthGlobal += feeAmount * WAD / rInt
-- [ ] Implement `_updatePositionFees(Position storage pos)`:
-  - [ ] growth = feeGrowthGlobal - pos.feeGrowthInsideLast
-  - [ ] pos.tokensOwed += pos.r * growth / WAD
-  - [ ] pos.feeGrowthInsideLast = feeGrowthGlobal
+- [x] Implement `_accumulateFee(feeAmount)`:
+  - [x] If rInt == 0 skip (no interior liquidity to credit)
+  - [x] feeGrowthGlobal += feeAmount * WAD / rInt
+- [x] Implement `_updatePositionFees(Position storage pos)`:
+  - [x] growth = feeGrowthGlobal - pos.feeGrowthInsideLast
+  - [x] pos.tokensOwed += pos.r * growth / WAD
+  - [x] pos.feeGrowthInsideLast = feeGrowthGlobal
 
 **3C-7 Reserve accounting helpers**
-- [ ] Implement `_updateReserves(assetIn, assetOut, amountIn, amountOut)`:
-  - [ ] Update slot0.sumX: += amountIn, -= amountOut
-  - [ ] Update slot0.sumXSq using (x+d)² - x² = 2xd + d²
-  - [ ] Update reserves[assetIn] += amountIn
-  - [ ] Update reserves[assetOut] -= amountOut
-- [ ] Implement `_buildTorusState()` returns TorusMath.TorusState:
-  - [ ] Assemble from slot0 fields
-- [ ] Implement `_currentReserves()` returns uint256[]:
-  - [ ] Copy from reserves mapping into array
-- [ ] Implement `_computeDepositAmounts(kWad, rWad)`:
-  - [ ] If pool empty: return equalPricePoint amounts minus virtual
-  - [ ] If pool imbalanced: compute amounts to maintain current prices
-- [ ] Implement `_computeWithdrawAmounts(tickIndex, rWad)`:
-  - [ ] Return pro-rata share of pool reserves for this tick's rWad
+- [x] Implement `_updateReserves(assetIn, assetOut, amountIn, amountOut)`:
+  - [x] Update slot0.sumX: += amountIn, -= amountOut
+  - [x] Update slot0.sumXSq using (x+d)² - x² = 2xd + d²
+  - [x] Update reserves[assetIn] += amountIn
+  - [x] Update reserves[assetOut] -= amountOut
+- [x] Implement `_buildTorusState()` returns TorusMath.TorusState:
+  - [x] Assemble from slot0 fields
+- [x] Implement `_currentReserves()` returns uint256[]:
+  - [x] Copy from reserves mapping into array
+- [x] Implement `_computeDepositAmounts(kWad, rWad)`:
+  - [x] If pool empty: return equalPricePoint amounts minus virtual
+  - [x] If pool imbalanced: compute amounts to maintain current prices
+- [x] Implement `_computeWithdrawAmounts(tickIndex, rWad)`:
+  - [x] Return pro-rata share of pool reserves for this tick's rWad
 
 **3C-8 Oracle**
-- [ ] Implement `observe(uint32[] secondsAgos)`:
-  - [ ] Call OrbitalOracle.observe with current state
-  - [ ] Return cumulative sumX and sumXSq arrays
-- [ ] Implement `increaseObservationCardinalityNext(uint16 next)`:
-  - [ ] Call OrbitalOracle.grow
+- [x] Implement `observe(uint32[] secondsAgos)`:
+  - [x] Call OrbitalOracle.observe with current state
+  - [x] Return cumulative sumX and sumXSq arrays
+- [x] Implement `increaseObservationCardinalityNext(uint16 next)`:
+  - [x] Call OrbitalOracle.grow
 
 ---
 

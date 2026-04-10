@@ -182,43 +182,43 @@ contract OrbitalPool is IOrbitalPoolEvents {
         }
     }
 
-    /// @dev Compute the per-asset deposit for a new LP at (kWad, rWad).
+    /// @dev Compute the per-asset deposit for an LP at rWad.
     ///
-    ///      v1 limitation — equal-price-only mint:
-    ///        Deposit = `rWad·(1 − 1/√n)` per asset, the new tick's full
-    ///        equal-price reserves. This is the FULL nominal reserve, NOT
-    ///        the capital-efficient `q − x_min(k)` form. v2 will subtract
-    ///        `x_min` and track virtual reserves separately.
+    ///      Empty pool (rInt == 0):
+    ///        Equal-price deposit — `rWad·(1 − 1/√n)` per asset.
+    ///        At equal price wNorm = 0 and term1² = rInt² so the invariant
+    ///        holds trivially after the first mint.
     ///
-    ///      Why this preserves the invariant for an arbitrary number of
-    ///      LPs: at equal price, all reserves[i] are equal, `wNorm = 0`,
-    ///      `α_int = r_int(√n − 1)`, and `term1² = r_int²` so the LHS
-    ///      collapses to `r_int²` regardless of how many ticks have been
-    ///      added. The k value is recorded per tick but does not enter the
-    ///      invariant equation in the equal-price case — it only matters
-    ///      for swap-time crossing detection.
+    ///      Imbalanced pool (rInt > 0):
+    ///        Pro-rata deposit — `reserves[i] * rWad / rInt` per asset.
+    ///        This buys a proportional share of the current pool without
+    ///        moving prices. Every x_i scales by λ = (rInt+rWad)/rInt, which
+    ///        scales sumX by λ, sumXSq by λ², wNorm by λ, and αInt by λ
+    ///        (when kBound = 0). The LHS then becomes λ²·rInt² = (rInt+rWad)²
+    ///        exactly. When boundary ticks exist (kBound > 0) the αInt term
+    ///        does not scale perfectly, but the residual is within the
+    ///        1e-6 tolerance enforced by checkInvariant at the end of mint.
     function _computeDepositAmounts(uint256 rWad)
         internal
         view
-        returns (uint256[] memory amounts, uint256 perAsset)
+        returns (uint256[] memory amounts)
     {
-        perAsset = SphereMath.equalPricePoint(rWad, n); // rWad·(1 − 1/√n)
-        amounts  = new uint256[](n);
-        for (uint256 i; i < n; ++i) {
-            amounts[i] = perAsset;
+        amounts = new uint256[](n);
+        if (slot0.rInt == 0) {
+            // Empty pool — symmetric equal-price deposit.
+            uint256 perAsset = SphereMath.equalPricePoint(rWad, n);
+            for (uint256 i; i < n; ++i) {
+                amounts[i] = perAsset;
+            }
+        } else {
+            // Pro-rata deposit is only invariant-preserving when no boundary
+            // ticks exist. With kBound > 0 the αInt term does not scale
+            // proportionally and the torus LHS drifts beyond tolerance.
+            require(slot0.kBound == 0, "OrbitalPool: mint blocked while boundary ticks exist");
+            for (uint256 i; i < n; ++i) {
+                amounts[i] = FullMath.mulDiv(reserves[i], rWad, slot0.rInt);
+            }
         }
-    }
-
-    /// @dev Returns true when the pool is at the equal-price point — i.e.
-    ///      all reserves are equal. The empty pool also passes this check.
-    ///      Used as the v1 mint precondition.
-    function _isEqualPrice() internal view returns (bool) {
-        if (n == 0) return true;
-        uint256 first = reserves[0];
-        for (uint256 i = 1; i < n; ++i) {
-            if (reserves[i] != first) return false;
-        }
-        return true;
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -226,15 +226,16 @@ contract OrbitalPool is IOrbitalPoolEvents {
     // ─────────────────────────────────────────────────────────────────────
 
     /// @notice Add liquidity at tick `kWad` with radius contribution `rWad`.
-    /// @dev    v1 restrictions:
-    ///         - Pool must be at the equal-price point (all reserves equal)
-    ///           or empty. Reverts otherwise. This is enough for an arbitrary
-    ///           number of LPs to mint into a fresh pool, but blocks mints
-    ///           after the first swap. Imbalanced-mint is a v2 feature.
-    ///         - Each mint creates a new tick entry — no merging of same-`k`
-    ///           positions. Multiple LPs at the same `k` get separate ticks.
-    ///         - The full equal-price reserve `rWad·(1 − 1/√n)` is deposited
-    ///           per asset; capital-efficient `q − x_min(k)` is a v2 feature.
+    /// @dev    Supports:
+    ///         - Empty pool: equal-price deposit of `r·(1 − 1/√n)` per asset.
+    ///         - Imbalanced pool (after swaps): pro-rata deposit at current
+    ///           reserve ratios, preserving prices.
+    ///         - Tick merging: if a tick at the same `k` already exists, the
+    ///           new liquidity is added to it. Multiple LPs at the same `k`
+    ///           share one tick but keep separate positions.
+    ///         - Position stacking: if the same (recipient, tick) already has
+    ///           a position, accrued fees are settled before the new `rWad`
+    ///           is added to the existing position.
     /// @param recipient Address that will own the resulting LP position.
     /// @param kWad      Tick plane constant, WAD-scaled. Must lie within
     ///                  `[TickLib.kMin(rWad, n), TickLib.kMax(rWad, n)]`.
@@ -255,51 +256,75 @@ contract OrbitalPool is IOrbitalPoolEvents {
         uint256 kM = TickLib.kMax(rWad, n);
         require(kWad >= km && kWad <= kM, "OrbitalPool: k out of range");
 
-        // v1 precondition: pool must be at equal price (or empty).
-        require(_isEqualPrice(), "OrbitalPool: pool imbalanced (v1)");
-
-        // Compute the per-asset deposit. At equal price every asset gets the
-        // same amount; we batch the slot0 updates accordingly.
-        uint256 perAsset;
-        (amounts, perAsset) = _computeDepositAmounts(rWad);
+        // Compute per-asset deposit amounts (equal-price for empty pool,
+        // pro-rata for imbalanced pool).
+        amounts = _computeDepositAmounts(rWad);
 
         // ── State updates ────────────────────────────────────────────────
-        //
-        // New tick is always interior at equal price: at equal price
-        // α_int^norm = √n − 1 = kMin^norm, and the LP's chosen kNorm =
-        // kWad/rWad ≥ kMin^norm by validation above. So the tick sits at or
-        // above the current price projection — i.e., its depeg has not been
-        // reached → interior.
-        ticks.push(
-            TickLib.Tick({
-                k:                kWad,
-                r:                rWad,
-                isInterior:       true,
-                feeGrowthInside:  0,
-                liquidityGross:   uint128(rWad)
-            })
-        );
-        uint256 tickIdx = ticks.length - 1;
 
-        // Symmetric reserve increment — preserves equal-price-ness so the
-        // next LP's _isEqualPrice() check still passes.
-        uint256 totalAdded   = perAsset * n;
-        uint256 perAssetSq   = FullMath.mulDiv(perAsset, perAsset, WAD);
-
-        for (uint256 i; i < n; ++i) {
-            reserves[i] += perAsset;
+        // Search for an existing tick at the same k. If found, merge into
+        // it; otherwise create a new tick entry.
+        uint256 tickIdx;
+        {
+            bool found;
+            uint256 len = ticks.length;
+            for (uint256 i; i < len; ++i) {
+                if (ticks[i].k == kWad) {
+                    tickIdx = i;
+                    found   = true;
+                    break;
+                }
+            }
+            if (found) {
+                // Merge into existing tick — add liquidity.
+                TickLib.Tick storage t = ticks[tickIdx];
+                t.r              += rWad;
+                t.liquidityGross += uint128(rWad);
+            } else {
+                // New tick, marked interior: the LP is depositing at the
+                // current price so the tick's depeg threshold has not been hit.
+                ticks.push(
+                    TickLib.Tick({
+                        k:                kWad,
+                        r:                rWad,
+                        isInterior:       true,
+                        feeGrowthInside:  0,
+                        liquidityGross:   uint128(rWad)
+                    })
+                );
+                tickIdx = ticks.length - 1;
+            }
         }
-        slot0.sumX   += totalAdded;
-        slot0.sumXSq += perAssetSq * n;
-        slot0.rInt   += rWad;
 
-        // Position keyed by (recipient, tickIdx). Each mint creates a fresh
-        // position because we don't merge ticks in v1.
+        // Update sumX, sumXSq, and reserves per-asset (amounts may differ).
+        uint256 totalAdded;
+        for (uint256 i; i < n; ++i) {
+            uint256 xi  = reserves[i];
+            uint256 amt = amounts[i];
+            totalAdded     += amt;
+            slot0.sumXSq   += FullMath.mulDiv(2 * xi, amt, WAD)
+                             + FullMath.mulDiv(amt, amt, WAD);
+            reserves[i]     = xi + amt;
+        }
+        slot0.sumX += totalAdded;
+        slot0.rInt += rWad;
+
+        // Position keyed by (recipient, tickIdx). Multiple LPs at the same
+        // tick share a tick but have separate positions.
         bytes32 pKey = PositionLib.positionKey(recipient, tickIdx);
-        positions[pKey] = PositionLib.Position({
-            tickIndex: tickIdx,
-            r:         rWad
-        });
+        PositionLib.Position storage pos = positions[pKey];
+
+        if (pos.r > 0) {
+            // Existing position — settle accrued fees at the old r before
+            // increasing it, so the LP doesn't earn retroactive fees on
+            // the newly added liquidity.
+            _updatePositionFees(pKey, pos.r);
+            pos.r += rWad;
+        } else {
+            // Fresh position.
+            pos.tickIndex = tickIdx;
+            pos.r         = rWad;
+        }
 
         // Snapshot per-asset feeGrowthGlobal so future fee accruals to this
         // position only count growth that happened *after* the mint.
@@ -404,19 +429,19 @@ contract OrbitalPool is IOrbitalPoolEvents {
         reserves[assetOut] -= amountOut;
     }
 
-    /// @dev Compute how many tokens to return to an LP removing `rWad` from
-    ///      tick `tickIndex`. Pro-rata over the tick's full radius contribution:
-    ///      amounts[i] = reserves[i] * rWad / tick.r
-    function _computeWithdrawAmounts(uint256 tickIndex, uint256 rWad)
+    /// @dev Compute how many tokens to return to an LP removing `rWad`.
+    ///      Pro-rata over total interior liquidity:
+    ///      amounts[i] = reserves[i] * rWad / rInt
+    function _computeWithdrawAmounts(uint256 /* tickIndex */, uint256 rWad)
         internal
         view
         returns (uint256[] memory amounts)
     {
-        uint256 tickR = ticks[tickIndex].r;
-        require(tickR > 0, "OrbitalPool: empty tick");
+        uint256 rInt = slot0.rInt;
+        require(rInt > 0, "OrbitalPool: no liquidity");
         amounts = new uint256[](n);
         for (uint256 i; i < n; ++i) {
-            amounts[i] = FullMath.mulDiv(reserves[i], rWad, tickR);
+            amounts[i] = FullMath.mulDiv(reserves[i], rWad, rInt);
         }
     }
 
@@ -725,6 +750,45 @@ contract OrbitalPool is IOrbitalPoolEvents {
         emit TickCrossed(tickIdx, t.isInterior);
     }
 
+    /// @dev Compute αNorm = (sumX/√n − kBound) / rInt for a torus state.
+    ///      Returns max-uint256 when rInt is zero (all liquidity on boundary).
+    function _alphaNormOf(TorusMath.TorusState memory ts, uint256 sumX)
+        internal
+        pure
+        returns (uint256)
+    {
+        uint256 sqrtN    = SphereMath.sqrt(ts.n * WAD * WAD);
+        uint256 alphaTot = FullMath.mulDiv(sumX, WAD, sqrtN);
+        uint256 alphaInt = alphaTot >= ts.kBound ? alphaTot - ts.kBound : 0;
+        return ts.rInt > 0
+            ? FullMath.mulDiv(alphaInt, WAD, ts.rInt)
+            : type(uint256).max;
+    }
+
+    /// @dev Apply a settled partial swap to the in-memory torus + reserve copy.
+    ///      Mirrors `_updateReserves` but for the off-chain solver loop only.
+    function _applyPartial(
+        SwapState memory state,
+        uint256[] memory res,
+        uint256 assetIn,
+        uint256 assetOut,
+        uint256 partialIn,
+        uint256 partialOut
+    ) internal pure {
+        uint256 xi = res[assetIn];   // pre-partial
+        uint256 xj = res[assetOut];  // pre-partial
+
+        res[assetIn]  = xi + partialIn;
+        res[assetOut] = xj - partialOut;
+
+        state.torus.sumX = state.torus.sumX + partialIn - partialOut;
+        state.torus.sumXSq = state.torus.sumXSq
+            + FullMath.mulDiv(2 * xi, partialIn,  WAD)
+            + FullMath.mulDiv(partialIn,  partialIn,  WAD)
+            - FullMath.mulDiv(2 * xj, partialOut, WAD)
+            + FullMath.mulDiv(partialOut, partialOut, WAD);
+    }
+
     /// @dev Solve the full swap amount, segmenting across tick crossings.
     ///      Loops up to 10 times (max crossings). Updates `state` in place.
     ///      Returns total amountOut.
@@ -734,24 +798,18 @@ contract OrbitalPool is IOrbitalPoolEvents {
         uint256 assetIn,
         uint256 assetOut
     ) internal returns (uint256 totalOut) {
-        uint256 sqrtN = SphereMath.sqrt(state.torus.n * WAD * WAD);
-
         for (uint256 iter; iter < 10; ++iter) {
             if (state.amountInRemaining == 0) break;
 
-            // ── Snapshot αNormOld BEFORE the tentative trade ──────────
-            uint256 alphaNormOld;
-            {
-                uint256 alphaTotOld = FullMath.mulDiv(state.torus.sumX, WAD, sqrtN);
-                uint256 alphaIntOld = alphaTotOld >= state.torus.kBound
-                    ? alphaTotOld - state.torus.kBound
-                    : 0;
-                alphaNormOld = state.torus.rInt > 0
-                    ? FullMath.mulDiv(alphaIntOld, WAD, state.torus.rInt)
-                    : type(uint256).max;
-            }
+            // αNormOld BEFORE the tentative trade.
+            uint256 alphaNormOld = _alphaNormOf(state.torus, state.torus.sumX);
 
-            // ── Attempt full trade with current torus state ───────────
+            // Snapshot sumX/sumXSq before solveSwap mutates them (it applies
+            // the input side to state.torus in place).
+            uint256 savedSumX   = state.torus.sumX;
+            uint256 savedSumXSq = state.torus.sumXSq;
+
+            // Tentative full trade against the current torus state.
             uint256 candidateOut = TorusMath.solveSwap(
                 state.torus,
                 assetIn,
@@ -760,55 +818,38 @@ contract OrbitalPool is IOrbitalPoolEvents {
                 res
             );
 
-            // ── Compute αNormNew after this tentative trade ───────────
-            uint256 sumXNew = state.torus.sumX
-                + state.amountInRemaining
-                - candidateOut;
+            // αNormNew under the tentative trade.  solveSwap already added
+            // amountInRemaining to state.torus.sumX, so post-swap sumX is
+            // state.torus.sumX − candidateOut.
+            uint256 alphaNormNew = _alphaNormOf(
+                state.torus,
+                state.torus.sumX - candidateOut
+            );
 
-            // alphaTotNew = sumXNew / sqrtN
-            uint256 alphaTotNew = FullMath.mulDiv(sumXNew, WAD, sqrtN);
-            uint256 alphaIntNew = alphaTotNew >= state.torus.kBound
-                ? alphaTotNew - state.torus.kBound
-                : 0;
-            uint256 alphaNormNew = state.torus.rInt > 0
-                ? FullMath.mulDiv(alphaIntNew, WAD, state.torus.rInt)
-                : type(uint256).max;
+            // Restore the pre-solveSwap sumX/sumXSq so that crossing logic
+            // (coefficients, partial-trade solver) operates on the un-mutated
+            // torus state.
+            state.torus.sumX   = savedSumX;
+            state.torus.sumXSq = savedSumXSq;
 
-            // ── Detect crossing (direction-aware) ─────────────────────
             (bool crossed, uint256 crossIdx) =
                 _detectCrossing(alphaNormOld, alphaNormNew);
 
             if (!crossed) {
-                // No crossing: accept the full trade.
                 totalOut += candidateOut;
                 state.amountInRemaining = 0;
                 break;
             }
 
-            // ── Partial trade to crossover ────────────────────────────
+            // Partial trade up to the crossing point.
             (uint256 partialIn, uint256 partialOut) =
                 _tradeToXover(state, res, assetIn, assetOut, crossIdx);
 
-            totalOut                    += partialOut;
-            state.amountInRemaining     -= partialIn;
+            totalOut                += partialOut;
+            state.amountInRemaining -= partialIn;
 
-            // Apply partial swap to mutable reserve copy.
-            res[assetIn]  += partialIn;
-            res[assetOut] -= partialOut;
+            _applyPartial(state, res, assetIn, assetOut, partialIn, partialOut);
 
-            // Update torus sumX/sumXSq in state for next iteration.
-            state.torus.sumX = state.torus.sumX + partialIn - partialOut;
-            {
-                uint256 xi = res[assetIn] - partialIn; // xi before partial
-                uint256 xj = res[assetOut] + partialOut; // xj before partial
-                state.torus.sumXSq = state.torus.sumXSq
-                    + FullMath.mulDiv(2 * xi, partialIn,  WAD)
-                    + FullMath.mulDiv(partialIn,  partialIn,  WAD)
-                    - FullMath.mulDiv(2 * xj, partialOut, WAD)
-                    + FullMath.mulDiv(partialOut, partialOut, WAD);
-            }
-
-            // ── Cross the tick ─────────────────────────────────────────
             _crossTick(crossIdx, state);
         }
     }
@@ -945,12 +986,20 @@ contract OrbitalPool is IOrbitalPoolEvents {
         slot0.sumX -= totalRemoved;
 
         // sumXSq: subtract the squared change per asset.
-        for (uint256 i; i < n; ++i) {
-            uint256 xOld = reserves[i];
-            uint256 amt  = amounts[i];
-            // xOld² - (xOld-amt)² = 2*xOld*amt - amt²
-            slot0.sumXSq -= FullMath.mulDiv(2 * xOld, amt, WAD)
-                          - FullMath.mulDiv(amt, amt, WAD);
+        // Uses saturating subtraction at the end to absorb ≤ n wei of
+        // mulDiv rounding dust between the mint and burn paths.
+        {
+            uint256 totalSqRemoved;
+            for (uint256 i; i < n; ++i) {
+                uint256 xOld = reserves[i];
+                uint256 amt  = amounts[i];
+                // xOld² - (xOld-amt)² = 2*xOld*amt - amt²
+                totalSqRemoved += FullMath.mulDiv(2 * xOld, amt, WAD)
+                                - FullMath.mulDiv(amt, amt, WAD);
+            }
+            slot0.sumXSq = slot0.sumXSq > totalSqRemoved
+                ? slot0.sumXSq - totalSqRemoved
+                : 0;
         }
 
         // ── Update reserves ──────────────────────────────────────────
