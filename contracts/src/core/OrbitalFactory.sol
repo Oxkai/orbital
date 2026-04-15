@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {IOrbitalFactory}    from "../interfaces/IOrbitalFactory.sol";
+import {IERC20Metadata}     from "../interfaces/IERC20Metadata.sol";
 import {OrbitalPoolDeployer} from "./OrbitalPoolDeployer.sol";
 
 /// @title OrbitalFactory
@@ -24,9 +25,14 @@ contract OrbitalFactory is IOrbitalFactory, OrbitalPoolDeployer {
     /// @notice Whitelist of fee tiers (hundredths of a bip) usable for new pools.
     mapping(uint24 => bool) public feeAmountEnabled;
 
+    /// @notice Global pause flag. Pools read this on every state-mutating
+    ///         entrypoint and revert while true. Owner-only.
+    bool public paused;
+
     event FeeAmountEnabled(uint24 indexed fee);
     event OwnerTransferStarted(address indexed previousOwner, address indexed newOwner);
     event OwnerTransferred(address indexed previousOwner, address indexed newOwner);
+    event PausedSet(bool paused);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "OrbitalFactory: not owner");
@@ -66,6 +72,15 @@ contract OrbitalFactory is IOrbitalFactory, OrbitalPoolDeployer {
         // (A,B) and (B,A) map to the same pool.
         address[] memory sorted = _sortAndValidate(tokens);
 
+        // Pool math is WAD-native — every token must report 18 decimals so the
+        // mint/swap callbacks pull the correct raw-unit amounts.
+        for (uint256 i; i < sorted.length; ++i) {
+            require(
+                IERC20Metadata(sorted[i]).decimals() == 18,
+                "OrbitalFactory: token decimals != 18"
+            );
+        }
+
         bytes32 tokenSetHash = keccak256(abi.encode(sorted, fee));
         require(getPool[tokenSetHash] == address(0), "OrbitalFactory: pool exists");
 
@@ -85,6 +100,14 @@ contract OrbitalFactory is IOrbitalFactory, OrbitalPoolDeployer {
         emit FeeAmountEnabled(fee);
     }
 
+    /// @notice Pause or unpause all pools deployed by this factory.
+    /// @dev    Emergency circuit breaker. No time-lock — callable directly by
+    ///         the factory owner. See contracts/SECURITY.md.
+    function setPaused(bool value) external onlyOwner {
+        paused = value;
+        emit PausedSet(value);
+    }
+
     /// @notice Step 1 of two-step ownership transfer.
     function setOwner(address newOwner) external onlyOwner {
         pendingOwner = newOwner;
@@ -101,9 +124,7 @@ contract OrbitalFactory is IOrbitalFactory, OrbitalPoolDeployer {
         emit OwnerTransferred(previous, owner);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // Internal helpers
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @dev Returns a memory copy of `tokens` sorted ascending. Reverts on
     ///      duplicates or zero addresses. Uses insertion sort: token sets are

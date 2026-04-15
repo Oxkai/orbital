@@ -17,9 +17,7 @@ pragma solidity ^0.8.13;
 ///           values, just like Uniswap V3 tickCumulative.
 ///         - Ring-buffer storage is owned by the pool: `Observation[65535]`.
 library OrbitalOracle {
-    // ─────────────────────────────────────────────────────────────────────
     // Types
-    // ─────────────────────────────────────────────────────────────────────
 
     struct Observation {
         // Block timestamp at which this observation was written.
@@ -32,9 +30,7 @@ library OrbitalOracle {
         bool    initialized;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // Initialization
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @notice Seed slot 0 with the pool's first observation.
     /// @param self    Storage ring buffer.
@@ -54,9 +50,7 @@ library OrbitalOracle {
         return (1, 1);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // Write
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @notice Write a new observation if `blockTimestamp` has advanced since
     ///         the most recent write. Same-block writes are no-ops because the
@@ -99,9 +93,7 @@ library OrbitalOracle {
         self[indexUpdated] = transform(last, blockTimestamp, sumX, sumXSq);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // Transform — extrapolate cumulative values from `last` to `blockTimestamp`
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @dev Returns a synthetic observation at `blockTimestamp`, computed by
     ///      extending `last` with constant (sumX, sumXSq) over the elapsed
@@ -130,9 +122,7 @@ library OrbitalOracle {
         });
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // Grow — expand the ring buffer's target cardinality
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @notice Pre-initialise observation slots so future writes are cheap.
     /// @dev    Only the *target* cardinality grows here. The actual populated
@@ -154,9 +144,7 @@ library OrbitalOracle {
         return next;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // Observe — query historical TWAVs
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @notice Resolve cumulative (sumX, sumXSq) at one historical timestamp.
     function observeSingle(
@@ -233,9 +221,7 @@ library OrbitalOracle {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // Internals — binary search and ordering helpers
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @dev `a <= b` under uint32 ring time, with `time` as the reference for
     ///      "now". Direct comparison is wrong if either value sits on the far

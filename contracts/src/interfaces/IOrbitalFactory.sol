@@ -13,6 +13,9 @@ interface IOrbitalFactory {
     /// @notice Owner of the factory (privileged for protocol fee config).
     function owner() external view returns (address);
 
+    /// @notice Global pause flag. When true, pools reject mint/swap/burn.
+    function paused() external view returns (bool);
+
     /// @notice Look up an existing pool by its token-set hash.
     function getPool(bytes32 tokenSetHash) external view returns (address pool);
 

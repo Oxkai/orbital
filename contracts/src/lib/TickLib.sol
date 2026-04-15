@@ -8,9 +8,7 @@ import "./SphereMath.sol";
 /// @notice Tick geometry for the orbital AMM (paper §4.5–4.9).
 ///         All monetary values WAD (1e18) fixed-point unless noted.
 library TickLib {
-    // ─────────────────────────────────────────────────────────────────────────
     // Tick struct
-    // ─────────────────────────────────────────────────────────────────────────
 
     struct Tick {
         uint256 k;                // plane constant, WAD-scaled
@@ -20,18 +18,14 @@ library TickLib {
         uint128 liquidityGross;   // total liquidity (r) in integer units
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Internal helper
-    // ─────────────────────────────────────────────────────────────────────────
 
     /// @dev WAD-scaled sqrt(n) = sqrt(n * WAD^2).
     function _sqrtN(uint256 n) private pure returns (uint256) {
         return SphereMath.sqrt(n * SphereMath.WAD * SphereMath.WAD);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Tick range bounds
-    // ─────────────────────────────────────────────────────────────────────────
 
     /// @notice Minimum valid plane constant: kMin = r(sqrt(n) - 1), WAD-scaled.
     function kMin(uint256 r, uint256 n) internal pure returns (uint256) {
@@ -45,9 +39,7 @@ library TickLib {
         return FullMath.mulDiv(r, (n - 1) * SphereMath.WAD, sqrtN);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Depeg-price to plane constant (paper §4.8)
-    // ─────────────────────────────────────────────────────────────────────────
 
     /// @notice Compute k from a depeg price.
     ///         k = r*sqrt(n) - r*(p + n-1) / sqrt(n*(p^2 + n-1))
@@ -95,9 +87,7 @@ library TickLib {
         return k;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Reserve bounds (paper §4.7)
-    // ─────────────────────────────────────────────────────────────────────────
 
     /// @notice Minimum reserve for asset i at tick k.
     ///         xMin = (k*sqrt(n) - sqrt(k^2*n - n*((n-1)*r - k*sqrt(n))^2)) / n
@@ -146,9 +136,7 @@ library TickLib {
         hi = hiRaw > r ? r : hiRaw;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Capital efficiency (paper §4.9)
-    // ─────────────────────────────────────────────────────────────────────────
 
     /// @notice Capital efficiency = xBase / (xBase - xMin), WAD-scaled.
     ///         Returns WAD (1x) when k == kMax (full-range position).
@@ -166,9 +154,7 @@ library TickLib {
         return FullMath.mulDiv(xBase, SphereMath.WAD, xBase - xLo);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Boundary radius (paper §4.6)
-    // ─────────────────────────────────────────────────────────────────────────
 
     /// @notice Radius of the boundary circle at plane constant k.
     ///         s = sqrt(r^2 - (r*sqrt(n) - k)^2), WAD-scaled.

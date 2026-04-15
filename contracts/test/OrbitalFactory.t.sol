@@ -4,16 +4,39 @@ pragma solidity ^0.8.13;
 import {Test}            from "forge-std/Test.sol";
 import {OrbitalFactory}  from "../src/core/OrbitalFactory.sol";
 import {OrbitalPool}     from "../src/core/OrbitalPool.sol";
+import {MockERC20}       from "../src/mocks/MockERC20.sol";
 
 contract OrbitalFactoryTest is Test {
     OrbitalFactory factory;
 
-    address constant TOK_A = address(0xA1);
-    address constant TOK_B = address(0xB2);
-    address constant TOK_C = address(0xC3);
+    // Pool math is WAD-native — factory enforces 18-decimal tokens. Deploy
+    // three mocks and sort their addresses ascending so tests can reason about
+    // canonical ordering without recomputing.
+    address TOK_A;
+    address TOK_B;
+    address TOK_C;
 
     function setUp() public {
         factory = new OrbitalFactory();
+
+        address[3] memory raw = [
+            address(new MockERC20("A", "A", 18)),
+            address(new MockERC20("B", "B", 18)),
+            address(new MockERC20("C", "C", 18))
+        ];
+        // Insertion sort ascending.
+        for (uint256 i = 1; i < 3; ++i) {
+            address x = raw[i];
+            uint256 j = i;
+            while (j > 0 && raw[j - 1] > x) {
+                raw[j] = raw[j - 1];
+                --j;
+            }
+            raw[j] = x;
+        }
+        TOK_A = raw[0];
+        TOK_B = raw[1];
+        TOK_C = raw[2];
     }
 
     // ── ownership ────────────────────────────────────────────────────────
@@ -157,6 +180,22 @@ contract OrbitalFactoryTest is Test {
         toks[1] = TOK_B;
         address pool = factory.createPool(toks, 250);
         assertTrue(pool != address(0));
+    }
+
+    // ── pause ────────────────────────────────────────────────────────────
+
+    function test_setPaused_owner_only() public {
+        vm.prank(address(0xBEEF));
+        vm.expectRevert("OrbitalFactory: not owner");
+        factory.setPaused(true);
+    }
+
+    function test_setPaused_toggles_flag() public {
+        assertFalse(factory.paused(), "starts unpaused");
+        factory.setPaused(true);
+        assertTrue(factory.paused(), "paused after setPaused(true)");
+        factory.setPaused(false);
+        assertFalse(factory.paused(), "unpaused after setPaused(false)");
     }
 
     // ── parameters cleared after deploy ──────────────────────────────────

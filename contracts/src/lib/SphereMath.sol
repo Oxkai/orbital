@@ -11,9 +11,7 @@ library SphereMath {
     uint256 internal constant WAD  = 1e18;
     uint256 internal constant WAD2 = 1e36;
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Integer square root
-    // ─────────────────────────────────────────────────────────────────────────
 
     /// @notice Babylonian integer square root — returns floor(√x).
     function sqrt(uint256 x) internal pure returns (uint256 z) {
@@ -29,9 +27,7 @@ library SphereMath {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Sphere geometry helpers
-    // ─────────────────────────────────────────────────────────────────────────
 
     /// @notice Equal-price point: q = r · (1 − 1/√n), WAD-scaled.
     /// @param r  Sphere radius, WAD-scaled.
@@ -95,9 +91,7 @@ library SphereMath {
         return FullMath.mulDiv(r - xj, WAD, r - xi);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Invariant check
-    // ─────────────────────────────────────────────────────────────────────────
 
     /// @notice Verifies the sphere invariant: ||r⃗ − x⃗||² ≈ r²
     ///         Expands to: n·r² − 2r·Σxᵢ + Σxᵢ² ≈ r²

@@ -10,29 +10,16 @@ import {IOrbitalFactory}      from "../interfaces/IOrbitalFactory.sol";
 import {IERC20Minimal}        from "../interfaces/IERC20Minimal.sol";
 import {PositionLib}          from "../lib/PositionLib.sol";
 
-/// @title OrbitalPositionManager
-/// @notice ERC721-wrapped LP position manager for orbital pools.
-///         Each token ID represents one LP position (pool + tick + r).
-///         Liquidity management (mint / increase / decrease / collect / burn)
-///         routes through the pool's callback-based API.
 contract OrbitalPositionManager is ERC721, IOrbitalMintCallback {
 
     address public immutable factory;
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Position metadata stored per token
-    // ─────────────────────────────────────────────────────────────────────
-
     struct PositionData {
         address pool;
         uint256 tickIndex;
-        uint256 kWad;       // tick plane constant
-        uint256 rWad;       // current radius (liquidity) contribution
+        uint256 kWad;
+        uint256 rWad;
     }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Params structs
-    // ─────────────────────────────────────────────────────────────────────
 
     struct MintParams {
         address   pool;
@@ -62,30 +49,18 @@ contract OrbitalPositionManager is ERC721, IOrbitalMintCallback {
         address recipient;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Storage
-    // ─────────────────────────────────────────────────────────────────────
-
     uint256 private _nextTokenId = 1;
 
-    /// @notice Position metadata per token ID.
     mapping(uint256 => PositionData) private _positions;
 
-    /// @notice Tokens held in the contract after decreaseLiquidity, pending collect.
-    ///         _tokensHeld[tokenId][assetIndex] = raw token amount.
+    /// @dev Tokens credited to a tokenId by decreaseLiquidity, pending collect.
     mapping(uint256 => mapping(uint256 => uint256)) private _tokensHeld;
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Constructor
-    // ─────────────────────────────────────────────────────────────────────
+    uint256 private _reentrancyStatus = 1;
 
     constructor(address _factory) ERC721("Orbital Position", "ORB-LP") {
         factory = _factory;
     }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Modifiers
-    // ─────────────────────────────────────────────────────────────────────
 
     modifier checkDeadline(uint256 deadline) {
         require(block.timestamp <= deadline, "OPM: expired");
@@ -97,15 +72,16 @@ contract OrbitalPositionManager is ERC721, IOrbitalMintCallback {
         _;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Liquidity management
-    // ─────────────────────────────────────────────────────────────────────
+    modifier nonReentrant() {
+        require(_reentrancyStatus == 1, "OPM: reentrant");
+        _reentrancyStatus = 2;
+        _;
+        _reentrancyStatus = 1;
+    }
 
-    /// @notice Add liquidity to a pool tick and mint an NFT representing the position.
-    /// @return tokenId  The newly minted token ID.
-    /// @return amounts  Actual token amounts pulled from the caller.
     function mint(MintParams calldata params)
         external
+        nonReentrant
         checkDeadline(params.deadline)
         returns (uint256 tokenId, uint256[] memory amounts)
     {
@@ -123,9 +99,6 @@ contract OrbitalPositionManager is ERC721, IOrbitalMintCallback {
             require(amounts[i] >= params.amountsMin[i], "OPM: amount below min");
         }
 
-        // Determine the tick index the pool assigned for this (address(this), kWad) position.
-        // The pool keys positions by positionKey(owner=address(this), tickIndex).
-        // We must find the tick for kWad by searching the pool's ticks array.
         uint256 tickIndex = _findTickIndex(params.pool, params.kWad);
 
         _positions[tokenId] = PositionData({
@@ -138,10 +111,9 @@ contract OrbitalPositionManager is ERC721, IOrbitalMintCallback {
         _safeMint(params.recipient, tokenId);
     }
 
-    /// @notice Add more liquidity to an existing position.
-    /// @return amounts Actual token amounts pulled from the caller.
     function increaseLiquidity(IncreaseLiquidityParams calldata params)
         external
+        nonReentrant
         onlyTokenOwner(params.tokenId)
         checkDeadline(params.deadline)
         returns (uint256[] memory amounts)
@@ -163,11 +135,9 @@ contract OrbitalPositionManager is ERC721, IOrbitalMintCallback {
         pos.rWad += params.rWad;
     }
 
-    /// @notice Remove liquidity from a position. Tokens are held in the contract
-    ///         until `collect` is called.
-    /// @return amounts Token amounts credited (held until collect).
     function decreaseLiquidity(DecreaseLiquidityParams calldata params)
         external
+        nonReentrant
         onlyTokenOwner(params.tokenId)
         checkDeadline(params.deadline)
         returns (uint256[] memory amounts)
@@ -185,17 +155,15 @@ contract OrbitalPositionManager is ERC721, IOrbitalMintCallback {
         pos.rWad -= params.rWad;
     }
 
-    /// @notice Collect accrued fees and any tokens held from decreaseLiquidity.
-    /// @return total Token amounts sent to recipient, one per asset.
     function collect(CollectParams calldata params)
         external
+        nonReentrant
         onlyTokenOwner(params.tokenId)
         returns (uint256[] memory total)
     {
         PositionData storage pos = _positions[params.tokenId];
         uint256 n = IOrbitalPool(pos.pool).n();
 
-        // Collect fees from the pool (transfers to address(this)).
         uint256[] memory fees = IOrbitalPoolActions(pos.pool).collect(pos.tickIndex);
 
         total = new uint256[](n);
@@ -212,8 +180,7 @@ contract OrbitalPositionManager is ERC721, IOrbitalMintCallback {
         }
     }
 
-    /// @notice Burn the NFT once the position is fully withdrawn and fees collected.
-    function burn(uint256 tokenId) external onlyTokenOwner(tokenId) {
+    function burn(uint256 tokenId) external nonReentrant onlyTokenOwner(tokenId) {
         PositionData storage pos = _positions[tokenId];
         require(pos.rWad == 0, "OPM: position not empty");
 
@@ -222,7 +189,6 @@ contract OrbitalPositionManager is ERC721, IOrbitalMintCallback {
             require(_tokensHeld[tokenId][i] == 0, "OPM: tokens not collected");
         }
 
-        // Check pool-level tokensOwed for any uncollected fee dust.
         bytes32 key = PositionLib.positionKey(address(this), pos.tickIndex);
         for (uint256 i; i < n; ++i) {
             require(
@@ -235,11 +201,6 @@ contract OrbitalPositionManager is ERC721, IOrbitalMintCallback {
         _burn(tokenId);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // View
-    // ─────────────────────────────────────────────────────────────────────
-
-    /// @notice Return all position data for a token ID.
     function positions(uint256 tokenId)
         external
         view
@@ -254,20 +215,10 @@ contract OrbitalPositionManager is ERC721, IOrbitalMintCallback {
         return (pos.pool, pos.tickIndex, pos.kWad, pos.rWad);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // ERC721
-    // ─────────────────────────────────────────────────────────────────────
-
-    /// @notice Returns an empty string. On-chain SVG via OrbitalDescriptor is optional.
     function tokenURI(uint256 /* tokenId */) public pure override returns (string memory) {
         return "";
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Mint callback
-    // ─────────────────────────────────────────────────────────────────────
-
-    /// @inheritdoc IOrbitalMintCallback
     function orbitalMintCallback(
         uint256[] calldata amounts,
         bytes calldata data
@@ -284,13 +235,6 @@ contract OrbitalPositionManager is ERC721, IOrbitalMintCallback {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Internal helpers
-    // ─────────────────────────────────────────────────────────────────────
-
-    /// @dev Scan the pool's ticks array for the tick whose k == kWad.
-    ///      Pool ticks are created during mint; the tick for (address(this), kWad)
-    ///      will exist by the time this is called.
     function _findTickIndex(address pool, uint256 kWad)
         private
         view
@@ -305,7 +249,6 @@ contract OrbitalPositionManager is ERC721, IOrbitalMintCallback {
         revert("OPM: tick not found");
     }
 
-    /// @dev Verify pool is registered with this factory.
     function _verifyPool(address pool) private view {
         uint256 numAssets = IOrbitalPool(pool).n();
         uint24  poolFee   = IOrbitalPool(pool).fee();
@@ -317,7 +260,6 @@ contract OrbitalPositionManager is ERC721, IOrbitalMintCallback {
         require(IOrbitalFactory(factory).getPool(hash) == pool, "OPM: unknown pool");
     }
 
-    /// @dev ERC20 transferFrom with return-value check.
     function _safeTransferFrom(
         address token,
         address from,
@@ -333,7 +275,6 @@ contract OrbitalPositionManager is ERC721, IOrbitalMintCallback {
         );
     }
 
-    /// @dev ERC20 transfer with return-value check.
     function _safeERC20Transfer(address token, address to, uint256 amount) private {
         (bool success, bytes memory ret) = token.call(
             abi.encodeWithSelector(IERC20Minimal.transfer.selector, to, amount)

@@ -45,9 +45,7 @@ contract OrbitalDescriptor {
         ));
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // Internal builders
-    // ─────────────────────────────────────────────────────────────────────
 
     function _buildDescription(address pool) private view returns (string memory) {
         uint256 n = IOrbitalPool(pool).n();

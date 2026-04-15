@@ -10,9 +10,7 @@ import "./SphereMath.sol";
 library TorusMath {
     uint256 internal constant WAD = SphereMath.WAD;
 
-    // ─────────────────────────────────────────────────────────────────────────
     // State struct
-    // ─────────────────────────────────────────────────────────────────────────
 
     struct TorusState {
         uint256 rInt;    // consolidated interior radius, WAD-scaled
@@ -23,9 +21,7 @@ library TorusMath {
         uint256 n;       // number of assets (plain integer)
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Helpers
-    // ─────────────────────────────────────────────────────────────────────────
 
     /// @notice Boundary-circle radius for a tick:
     ///         s = sqrt(r² − (k − r√n)²), WAD-scaled.
@@ -47,9 +43,7 @@ library TorusMath {
         return FullMath.mulDiv(alphaInt, WAD, rInt);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     // LHS of torus invariant (paper §4.11)
-    // ─────────────────────────────────────────────────────────────────────────
 
     /// @notice Compute LHS = (alphaInt − rInt√n)² + (wNorm − sBound)², WAD-scaled.
     function torusLHS(TorusState memory s) internal pure returns (uint256) {
@@ -89,9 +83,7 @@ library TorusMath {
         return FullMath.mulDiv(term1, term1, WAD) + FullMath.mulDiv(term2, term2, WAD);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Invariant check
-    // ─────────────────────────────────────────────────────────────────────────
 
     /// @notice Check torus invariant: LHS ≈ rInt².
     /// @return ok           true when relative drift < 1e-6 (1e12 in WAD units)
@@ -116,9 +108,7 @@ library TorusMath {
         ok = relativeDrift < 1e12; // 1e-6 × WAD
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Swap solver — Newton's method (paper §4.13)
-    // ─────────────────────────────────────────────────────────────────────────
 
     /// @notice Solve for amountOut such that the torus invariant holds after swap.
     /// @param s         Current torus state (will be mutated for input side).
@@ -141,7 +131,6 @@ library TorusMath {
         uint256 xjOld = reserves[assetOut];
         require(xjOld > 0, "TorusMath: empty output reserve");
 
-        // ── Step 1: apply input side to state ───────────────────────────────
         {
             uint256 xiOld = reserves[assetIn];
             s.sumX = s.sumX + amountIn;
@@ -153,11 +142,9 @@ library TorusMath {
 
         uint256 rhs = FullMath.mulDiv(s.rInt, s.rInt, WAD);
 
-        // ── Step 2: initial guess ────────────────────────────────────────────
         amountOut = FullMath.mulDiv(amountIn, 999, 1000);
         if (amountOut >= xjOld) amountOut = xjOld - 1;
 
-        // ── Step 3: Newton's method ──────────────────────────────────────────
         for (uint256 i; i < 15; ++i) {
             int256 f0 = int256(torusLHS(_applyOutput(s, xjOld, amountOut))) - int256(rhs);
             if (f0 == 0) break;

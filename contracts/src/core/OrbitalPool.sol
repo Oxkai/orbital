@@ -12,6 +12,7 @@ import {IERC20Minimal}         from "../interfaces/IERC20Minimal.sol";
 import {IOrbitalMintCallback}  from "../interfaces/IOrbitalMintCallback.sol";
 import {IOrbitalSwapCallback}  from "../interfaces/IOrbitalSwapCallback.sol";
 import {IOrbitalPoolEvents}    from "../interfaces/IOrbitalPoolEvents.sol";
+import {IOrbitalFactory}       from "../interfaces/IOrbitalFactory.sol";
 import {OrbitalPoolDeployer}   from "./OrbitalPoolDeployer.sol";
 
 /// @title OrbitalPool
@@ -23,9 +24,7 @@ import {OrbitalPoolDeployer}   from "./OrbitalPoolDeployer.sol";
 contract OrbitalPool is IOrbitalPoolEvents {
     uint256 internal constant WAD = 1e18;
 
-    // ─────────────────────────────────────────────────────────────────────
     // Immutables — set once in constructor from deployer parameters
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @notice The factory that deployed this pool.
     address public immutable factory;
@@ -41,9 +40,7 @@ contract OrbitalPool is IOrbitalPoolEvents {
     ///         dynamic arrays. Written once in the constructor and never again.
     address[] public tokens;
 
-    // ─────────────────────────────────────────────────────────────────────
     // Slot0 — hot torus state, packed for cheap reads
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @notice Pool-level torus state mirroring `TorusMath.TorusState`, plus a
     ///         reentrancy lock. Updated on every mint/swap/burn.
@@ -58,9 +55,7 @@ contract OrbitalPool is IOrbitalPoolEvents {
 
     Slot0 public slot0;
 
-    // ─────────────────────────────────────────────────────────────────────
     // Reserves, fees, ticks, positions
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @notice Per-asset reserve, indexed by position in `tokens`. WAD-scaled.
     ///         Excludes accrued (uncollected) fees, which sit in `feesAccrued`.
@@ -97,9 +92,7 @@ contract OrbitalPool is IOrbitalPoolEvents {
     /// @notice LP positions, keyed by `PositionLib.positionKey(owner, tickIdx)`.
     mapping(bytes32 => PositionLib.Position) public positions;
 
-    // ─────────────────────────────────────────────────────────────────────
     // Oracle ring buffer (paper-agnostic; mirrors Uniswap V3 oracle layout)
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @notice Time-weighted observation ring buffer. Slot 0 is seeded in the
     ///         constructor; subsequent writes happen on swap.
@@ -114,9 +107,7 @@ contract OrbitalPool is IOrbitalPoolEvents {
     /// @notice Next-target observation cardinality, ratcheted by `grow`.
     uint16 public observationCardinalityNext;
 
-    // ─────────────────────────────────────────────────────────────────────
     // Reentrancy lock
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @dev Single-entry guard for all state-mutating external calls.
     modifier lock() {
@@ -126,9 +117,16 @@ contract OrbitalPool is IOrbitalPoolEvents {
         slot0.unlocked = true;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    /// @dev Reverts while the factory is paused. Applied to mint/swap/burn so
+    ///      the emergency circuit breaker can halt all value-moving calls.
+    ///      Read is deliberately fresh (no caching) so unpause takes effect
+    ///      immediately.
+    modifier whenNotPaused() {
+        require(!IOrbitalFactory(factory).paused(), "OrbitalPool: paused");
+        _;
+    }
+
     // Constructor — read parameters from the deploying factory
-    // ─────────────────────────────────────────────────────────────────────
 
     constructor() {
         // The deployer (== factory) staged Parameters in storage immediately
@@ -156,9 +154,7 @@ contract OrbitalPool is IOrbitalPoolEvents {
             OrbitalOracle.initialize(observations, uint32(block.timestamp));
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // 3C-7 — Reserve / state helpers
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @dev Snapshot the consolidated torus state for invariant checks and
     ///      math-library calls.
@@ -221,9 +217,7 @@ contract OrbitalPool is IOrbitalPoolEvents {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // 3C-2 — Mint (add liquidity)
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @notice Add liquidity at tick `kWad` with radius contribution `rWad`.
     /// @dev    Supports:
@@ -248,7 +242,7 @@ contract OrbitalPool is IOrbitalPoolEvents {
         uint256 kWad,
         uint256 rWad,
         bytes calldata data
-    ) external lock returns (uint256[] memory amounts) {
+    ) external lock whenNotPaused returns (uint256[] memory amounts) {
         require(rWad > 0, "OrbitalPool: rWad=0");
 
         // Validate k ∈ [kMin, kMax] for the LP-supplied r.
@@ -259,8 +253,6 @@ contract OrbitalPool is IOrbitalPoolEvents {
         // Compute per-asset deposit amounts (equal-price for empty pool,
         // pro-rata for imbalanced pool).
         amounts = _computeDepositAmounts(rWad);
-
-        // ── State updates ────────────────────────────────────────────────
 
         // Search for an existing tick at the same k. If found, merge into
         // it; otherwise create a new tick entry.
@@ -332,7 +324,6 @@ contract OrbitalPool is IOrbitalPoolEvents {
             feeGrowthInsideLast[pKey][i] = feeGrowthGlobal[i];
         }
 
-        // ── Pull tokens via the mint callback ────────────────────────────
         //
         // We snapshot the contract's ERC20 balances *before* the callback,
         // hand control to the caller (which transfers tokens in), then
@@ -351,7 +342,6 @@ contract OrbitalPool is IOrbitalPoolEvents {
             require(received >= amounts[i], "OrbitalPool: M0");
         }
 
-        // ── Invariant sanity check ───────────────────────────────────────
         //
         // For the equal-price symmetric mint this is a tautology, but we
         // run it anyway as a regression guard: any future change to the
@@ -363,9 +353,7 @@ contract OrbitalPool is IOrbitalPoolEvents {
         emit Mint(recipient, kWad, rWad, amounts);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // 3C-6 — Fee accounting helpers
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @dev Credit `feeAmount` of `assetIn` to interior LPs and stash the
     ///      tokens in `feesAccrued` so they don't perturb the AMM invariant.
@@ -395,9 +383,7 @@ contract OrbitalPool is IOrbitalPoolEvents {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // 3C-7 — Reserve accounting helpers
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @dev Apply a settled swap's reserve and sumX/sumXSq changes to slot0.
     ///      Uses the identity (x+d)² − x² = 2xd + d² for the input asset and
@@ -445,9 +431,7 @@ contract OrbitalPool is IOrbitalPoolEvents {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // 3C-8 — Oracle
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @notice Query time-weighted cumulative sumX and sumXSq at multiple
     ///         historical offsets. Each entry in `secondsAgos` is seconds
@@ -473,7 +457,7 @@ contract OrbitalPool is IOrbitalPoolEvents {
 
     /// @notice Expand the oracle ring buffer's target cardinality.
     ///         Pre-initialises new slots so future writes are cheap.
-    function increaseObservationCardinalityNext(uint16 next) external {
+    function increaseObservationCardinalityNext(uint16 next) external lock {
         observationCardinalityNext = OrbitalOracle.grow(
             observations,
             observationCardinalityNext,
@@ -481,9 +465,7 @@ contract OrbitalPool is IOrbitalPoolEvents {
         );
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // 3C-3 — Swap internals (Layer 2)
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @dev In-memory torus + loop state passed through _solveWithCrossings.
     struct SwapState {
@@ -592,7 +574,6 @@ contract OrbitalPool is IOrbitalPoolEvents {
     ) internal view returns (XoverCoeffs memory q) {
         uint256 sqrtN = SphereMath.sqrt(ts.n * WAD * WAD);
 
-        // ── target sumX at crossing ────────────────────────────────────
         uint256 kNormCross = FullMath.mulDiv(
             ticks[crossTickIdx].k, WAD, ticks[crossTickIdx].r
         );
@@ -604,7 +585,6 @@ contract OrbitalPool is IOrbitalPoolEvents {
         q.dPositive = targetSumX >= ts.sumX;
         q.D         = q.dPositive ? targetSumX - ts.sumX : ts.sumX - targetSumX;
 
-        // ── target sumXSq from torus invariant LHS = rInt² ─────────────
         uint256 targetSumXSq;
         {
             uint256 rIntSqrtN = FullMath.mulDiv(ts.rInt, sqrtN, WAD);
@@ -620,7 +600,6 @@ contract OrbitalPool is IOrbitalPoolEvents {
                          + FullMath.mulDiv(targetSumX, targetSumX, ts.n * WAD);
         }
 
-        // ── b, c in WAD¹ ───────────────────────────────────────────────
         uint256 xi     = res[assetIn];
         uint256 xj     = res[assetOut];
         uint256 twoXiD = FullMath.mulDiv(2 * xi, q.D, WAD);
@@ -851,12 +830,18 @@ contract OrbitalPool is IOrbitalPoolEvents {
             _applyPartial(state, res, assetIn, assetOut, partialIn, partialOut);
 
             _crossTick(crossIdx, state);
+
+            // If we just crossed on the final iteration and still have input
+            // to trade, the swap exceeds the crossing cap. Revert with a
+            // distinct error rather than silently returning partial output
+            // (which would surface as an opaque slippage revert downstream).
+            if (iter == 9 && state.amountInRemaining > 0) {
+                revert("OrbitalPool: too many crossings");
+            }
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // 3C-3 — swap (public entrypoint)
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @notice Swap `amountIn` of `assetIn` for `assetOut`, delivering at
     ///         least `amountOutMin` to `recipient`. Uses the V3 callback
@@ -868,14 +853,13 @@ contract OrbitalPool is IOrbitalPoolEvents {
         uint256 amountIn,
         uint256 amountOutMin,
         bytes calldata data
-    ) external lock returns (uint256 amountOut) {
-        // ── Input validation ─────────────────────────────────────────
+    ) external lock whenNotPaused returns (uint256 amountOut) {
+
         require(amountIn > 0,                "OrbitalPool: amountIn=0");
         require(assetIn < n && assetOut < n, "OrbitalPool: bad asset");
         require(assetIn != assetOut,         "OrbitalPool: same asset");
         require(slot0.rInt > 0,              "OrbitalPool: no liquidity");
 
-        // ── Fee + solve ───────────────────────────────────────────────
         uint256 amountInNet;
         uint256 feeAmount;
         {
@@ -909,10 +893,8 @@ contract OrbitalPool is IOrbitalPoolEvents {
             observationCardinalityNext
         );
 
-        // ── Reserve accounting ────────────────────────────────────────
         _updateReserves(assetIn, assetOut, amountInNet, amountOut);
 
-        // ── Transfer out, callback in, verify ────────────────────────
         TransferHelper.safeTransfer(tokens[assetOut], recipient, amountOut);
 
         {
@@ -924,22 +906,20 @@ contract OrbitalPool is IOrbitalPoolEvents {
             );
         }
 
-        // ── Invariant ─────────────────────────────────────────────────
         (bool ok, ) = TorusMath.checkInvariant(_buildTorusState());
         require(ok, "OrbitalPool: invariant");
 
         emit Swap(msg.sender, recipient, assetIn, assetOut, amountIn, amountOut);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // 3C-4 — burn (remove liquidity)
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @notice Remove `rWad` of liquidity from tick `tickIndex`.
     ///         Credits token amounts to `tokensOwed`; caller must `collect`.
     function burn(uint256 tickIndex, uint256 rWad)
         external
         lock
+        whenNotPaused
         returns (uint256[] memory amounts)
     {
         require(rWad > 0, "OrbitalPool: rWad=0");
@@ -957,7 +937,6 @@ contract OrbitalPool is IOrbitalPoolEvents {
         // Compute pro-rata withdrawal amounts.
         amounts = _computeWithdrawAmounts(tickIndex, rWad);
 
-        // ── Update slot0 torus params + tick.k / tick.s in lockstep ──
         //
         // Boundary tick: shrink the tick's k *and* the slot0 kBound/sBound
         // by the same proportion (rWad / tick.r). Failing to shrink t.k
@@ -978,7 +957,6 @@ contract OrbitalPool is IOrbitalPoolEvents {
             t.k -= kRemove;
         }
 
-        // ── Update sumX / sumXSq ─────────────────────────────────────
         uint256 totalRemoved;
         for (uint256 i; i < n; ++i) {
             totalRemoved += amounts[i];
@@ -1002,12 +980,10 @@ contract OrbitalPool is IOrbitalPoolEvents {
                 : 0;
         }
 
-        // ── Update reserves ──────────────────────────────────────────
         for (uint256 i; i < n; ++i) {
             reserves[i] -= amounts[i];
         }
 
-        // ── Update tick and position ─────────────────────────────────
         t.r               -= rWad;
         t.liquidityGross  -= uint128(rWad);
         pos.r             -= rWad;
@@ -1018,14 +994,12 @@ contract OrbitalPool is IOrbitalPoolEvents {
             delete positions[pKey];
         }
 
-        // ── Push withdrawn principal to caller ───────────────────────
         for (uint256 i; i < n; ++i) {
             if (amounts[i] > 0) {
                 TransferHelper.safeTransfer(tokens[i], msg.sender, amounts[i]);
             }
         }
 
-        // ── Invariant check ──────────────────────────────────────────
         if (slot0.rInt > 0) {
             (bool ok, ) = TorusMath.checkInvariant(_buildTorusState());
             require(ok, "OrbitalPool: invariant");
@@ -1034,9 +1008,7 @@ contract OrbitalPool is IOrbitalPoolEvents {
         emit Burn(msg.sender, tickIndex, rWad, amounts);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // 3C-5 — collect (fees)
-    // ─────────────────────────────────────────────────────────────────────
 
     /// @notice Collect accrued fees for caller's position at `tickIndex`.
     ///         Pays out the per-asset `tokensOwed` accumulator, drawn from

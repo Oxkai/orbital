@@ -12,3 +12,37 @@ build/
 *.egg-info/
 .DS_Store
 broadcast/
+issue.md
+
+# Internal planning / working docs — not for public consumption.
+contracts/todo.md
+contracts/bug.md
+contracts/SECURITY.md
+contracts/paper.md
+
+# Foundry artifacts
+contracts/broadcast/
+contracts/deployments/local.json
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+Thumbs.db
+
+# Secrets
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Python extras
+*.log
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Claude Code local state
+.claude/
