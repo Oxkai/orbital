@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+:root {
+  --background:    #F5EEE6;
+  --bg-subtle:     #EDE5DC;
+  --primary:       #111111;
+  --secondary:     #555555;
+  --tertiary:      #888888;
+  --muted:         #BBBBBB;
+  --quaternary:    #E0D7CE;
+  --surface:       #FEFAF5;
+  --surface-alt:   #F5EFE8;
+  --surface-raised:#FFFFFF;
+  --border:        #E0D7CE;
+  --border-strong: #C8BFB5;
+  --accent:        #6B5FE4;
+  --accent-dim:    #EAE8FC;
+  --green:         #16A34A;
+  --red:           #DC2626;
+}
+
+.dark {
+  --background:    #0C0F0E;
+  --bg-subtle:     #0F1412;
+  --primary:       #F0EAE2;
+  --secondary:     #C4B9AE;
+  --tertiary:      #8A7F76;
+  --muted:         #4A433D;
+  --quaternary:    #1E2422;
+  --surface:       #141A18;
+  --surface-alt:   #181F1D;
+  --surface-raised:#1E2624;
+  --border:        #232B28;
+  --border-strong: #2E3835;
+  --accent:        #7C71F0;
+  --accent-dim:    #1E1C3A;
+  --green:         #22C55E;
+  --red:           #F87171;
+}
+
+@theme inline {
+  --color-background:    var(--background);
+  --color-bg-subtle:     var(--bg-subtle);
+  --color-primary:       var(--primary);
+  --color-secondary:     var(--secondary);
+  --color-tertiary:      var(--tertiary);
+  --color-muted:         var(--muted);
+  --color-quaternary:    var(--quaternary);
+  --color-surface:       var(--surface);
+  --color-surface-alt:   var(--surface-alt);
+  --color-surface-raised:var(--surface-raised);
+  --color-border:        var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent:        var(--accent);
+  --color-accent-dim:    var(--accent-dim);
+  --color-green:         var(--green);
+  --color-red:           var(--red);
+  --font-mono: var(--font-geist-mono);
+}
+
+*, *::before, *::after {
+  font-family: var(--font-geist-mono), monospace;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--tertiary); }

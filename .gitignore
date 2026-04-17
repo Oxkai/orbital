@@ -2,6 +2,11 @@ node_modules/
 .env
 out/
 cache/
+frontend/node_modules/
+frontend/.next/
+frontend/build/
+frontend/dist/
+frontend/.env*
 __pycache__/
 *.pyc
 .venv/
@@ -22,7 +27,10 @@ contracts/paper.md
 
 # Foundry artifacts
 contracts/broadcast/
-contracts/deployments/local.json
+contracts/deployments/
+contracts/node_modules/
+contracts/build/
+contracts/cache/
 
 # Editors / OS
 .idea/
