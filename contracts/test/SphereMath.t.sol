@@ -4,7 +4,17 @@ pragma solidity ^0.8.13;
 import {Test} from "forge-std/Test.sol";
 import {SphereMath} from "../src/lib/SphereMath.sol";
 
+contract SphereMathHarness {
+    function spotPrice(uint256 r, uint256 xi, uint256 xj) external pure returns (uint256) {
+        return SphereMath.spotPrice(r, xi, xj);
+    }
+    function computeWNormSq(uint256[] calldata reserves, uint256 n) external pure returns (uint256) {
+        return SphereMath.computeWNormSq(reserves, n);
+    }
+}
+
 contract SphereMathTest is Test {
+    SphereMathHarness harness = new SphereMathHarness();
     uint256 constant WAD = 1e18;
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -106,12 +116,12 @@ contract SphereMathTest is Test {
 
     function test_spotPrice_reverts_when_xj_ge_r() public {
         vm.expectRevert("SphereMath: reserve exceeds radius");
-        SphereMath.spotPrice(100 * WAD, 50 * WAD, 100 * WAD);
+        harness.spotPrice(100 * WAD, 50 * WAD, 100 * WAD);
     }
 
     function test_spotPrice_reverts_when_xi_ge_r() public {
         vm.expectRevert("SphereMath: reserve exceeds radius");
-        SphereMath.spotPrice(100 * WAD, 100 * WAD, 50 * WAD);
+        harness.spotPrice(100 * WAD, 100 * WAD, 50 * WAD);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -145,7 +155,7 @@ contract SphereMathTest is Test {
         reserves[0] = 50 * WAD;
         reserves[1] = 50 * WAD;
         vm.expectRevert("SphereMath: length mismatch");
-        SphereMath.computeWNormSq(reserves, 3);
+        harness.computeWNormSq(reserves, 3);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

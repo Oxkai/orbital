@@ -1,36 +1,51 @@
 # Orbital AMM — Contracts
 
-The Solidity implementation of the [Orbital](../readme.md) multi-asset
+The Solidity implementation of the [Orbital](../README.md) multi-asset
 stablecoin AMM. Built with Foundry, structured after Uniswap V3
 (factory + pool + callback router + ERC-721 position manager), but with the
-sphere/torus invariant from the Paradigm Orbital paper replacing the
-`x·y=k` curve so the pool can hold N ≥ 2 assets.
+sphere/torus invariant from the Paradigm Orbital paper replacing the `x·y=k`
+curve so the pool can hold N ≥ 2 assets.
 
 > **Status:** research prototype. The full Foundry suite (unit, fuzz, and
-> invariant tests) passes on `forge test`. The system is not audited.
+> invariant tests) passes on `forge test`. Not audited.
 
 ---
 
-## What I built
+## Table of contents
 
-| Layer       | Contract                    | What it does                                        |
-| ----------- | --------------------------- | --------------------------------------------------- |
-| Core        | `OrbitalFactory`            | Deploys pools, tracks fee tiers, global pause flag  |
-| Core        | `OrbitalPoolDeployer`       | Holds constructor params during CREATE2 deployment  |
-| Core        | `OrbitalPool`               | The AMM itself — mint, swap, burn, collect, oracle  |
-| Periphery   | `OrbitalRouter`             | `exactInput` / `exactOutput` swaps with deadline    |
-| Periphery   | `OrbitalQuoter`             | Off-chain price preview (V3 revert-style)           |
-| Periphery   | `OrbitalPositionManager`    | Each LP position is an ERC-721                      |
-| Periphery   | `OrbitalDescriptor`         | Token URI hook for the position NFT                 |
-| Lib         | `SphereMath`                | √n, equal-price point, ‖w‖², spot price             |
-| Lib         | `TorusMath`                 | Torus invariant check + Newton swap solver          |
-| Lib         | `TickLib`                   | `kMin`, `kMax`, capital efficiency, tick geometry   |
-| Lib         | `PositionLib`               | Position key + fee-growth accounting                |
-| Lib         | `OrbitalOracle`             | TWAP ring buffer (65,535 slots, V3-style)           |
-| Lib         | `FullMath` / `TransferHelper` | 512-bit mulDiv + safe ERC-20 transfers (from V3)  |
+- [Contract reference](#contract-reference)
+- [Layout](#layout)
+- [Architecture cheatsheet](#architecture-cheatsheet)
+- [Invariants](#invariants)
+- [Implementation notes](#implementation-notes)
+- [Quick start](#quick-start)
+- [Using the protocol](#using-the-protocol)
+- [Admin surface](#admin-surface)
+- [Testing](#testing)
+- [Further reading](#further-reading)
+
+---
+
+## Contract reference
+
+| Layer     | Contract                      | What it does                                       |
+| --------- | ----------------------------- | -------------------------------------------------- |
+| Core      | `OrbitalFactory`              | Deploys pools, tracks fee tiers, global pause flag |
+| Core      | `OrbitalPoolDeployer`         | Holds constructor params during CREATE2 deployment |
+| Core      | `OrbitalPool`                 | The AMM itself — mint, swap, burn, collect, oracle |
+| Periphery | `OrbitalRouter`               | `exactInput` / `exactOutput` swaps with deadline   |
+| Periphery | `OrbitalQuoter`               | Off-chain price preview (V3 revert-style)          |
+| Periphery | `OrbitalPositionManager`      | Each LP position is an ERC-721                     |
+| Periphery | `OrbitalDescriptor`           | Token URI hook for the position NFT                |
+| Lib       | `SphereMath`                  | √n, equal-price point, ‖w‖², spot price            |
+| Lib       | `TorusMath`                   | Torus invariant check + Newton swap solver         |
+| Lib       | `TickLib`                     | `kMin`, `kMax`, capital efficiency, tick geometry  |
+| Lib       | `PositionLib`                 | Position key + fee-growth accounting               |
+| Lib       | `OrbitalOracle`               | TWAP ring buffer (65,535 slots, V3-style)          |
+| Lib       | `FullMath` / `TransferHelper` | 512-bit mulDiv + safe ERC-20 transfers (from V3)   |
 
 All pool math is WAD-native (1e18 fixed point). The factory rejects tokens
-whose `decimals()` isn't 18 — mixing decimals would desynchronise callback
+whose `decimals()` is not 18 — mixing decimals would desynchronise callback
 transfer amounts from pool state.
 
 ---
@@ -42,15 +57,72 @@ contracts/
 ├── src/
 │   ├── core/          Factory, Pool, PoolDeployer
 │   ├── periphery/     Router, Quoter, PositionManager, Descriptor
-│   ├── lib/           Sphere/Torus/Tick/Position/Oracle/FullMath/Transfer
+│   ├── lib/           SphereMath, TorusMath, TickLib, PositionLib,
+│   │                  OrbitalOracle, FullMath, TransferHelper
 │   ├── interfaces/    IOrbitalFactory, IOrbitalPool* (split V3-style),
 │   │                  callback interfaces, IERC20Minimal, IERC20Metadata
 │   └── mocks/         MockERC20, mint/swap callback helpers
 ├── script/            Deploy, DeploySepolia, Seed, SimulateDepeg
-├── test/              Unit, fuzz, invariant tests
+├── test/              Unit, fuzz, invariant tests (134 tests, 8 suites)
 ├── deployments/       Per-network address JSON (written by scripts)
 └── foundry.toml
 ```
+
+---
+
+## Architecture cheatsheet
+
+| Uniswap V3                   | Orbital                  | Notes                             |
+| ---------------------------- | ------------------------ | --------------------------------- |
+| `UniswapV3Factory`           | `OrbitalFactory`         | Same create+registry pattern      |
+| `UniswapV3Pool`              | `OrbitalPool`            | Sphere/torus instead of `x·y=k`  |
+| `SwapRouter`                 | `OrbitalRouter`          | Assets are indices not addresses  |
+| `NonfungiblePositionManager` | `OrbitalPositionManager` | Identical ERC-721 flow            |
+| `Quoter`                     | `OrbitalQuoter`          | Same revert-extraction pattern    |
+| `TickMath`                   | `SphereMath`             | Sphere geometry, no log ticks     |
+| `SqrtPriceMath`              | `TorusMath`              | Newton solver for torus invariant |
+| `Oracle`                     | `OrbitalOracle`          | TWAP on `sumX`, `sumXSq`          |
+| `sqrtPriceX96` (Q64.96)      | `sumX`, `sumXSq` (WAD)   | Different hot-state encoding      |
+| `liquidity` (uint128)        | `rInt` (WAD)             | Consolidated interior radius      |
+| `tick` (int24 log bucket)    | `tick` (k plane, WAD)    | Nested ticks, not disjoint        |
+| 2 tokens                     | N tokens (n ≥ 2)         | The main differentiator           |
+
+---
+
+## Invariants
+
+Enforced on every mint, swap, and burn:
+
+1. Torus LHS ≈ `rInt²` with relative drift < 1 ppm
+2. `sumX == Σ reserves[i]`
+3. `sumXSq == Σ reserves[i]² / WAD`
+4. `rInt == Σ r over interior ticks`
+5. `kBound`, `sBound == Σ k, s over boundary ticks`
+
+A failing check reverts the transaction.
+
+---
+
+## Implementation notes
+
+- **Precision.** All pool values are WAD-scaled (1e18). Every multiplication
+  that could overflow 256 bits goes through `FullMath.mulDiv` (Uniswap's
+  512-bit helper).
+- **Decimal enforcement.** The factory rejects tokens whose `decimals()` is
+  not 18 so that callback transfer amounts remain consistent with on-chain pool
+  state.
+- **Reentrancy.** Every state-changing entrypoint on the pool is guarded by a
+  single `lock` modifier backed by `slot0.unlocked`.
+- **Oracle.** Uses the Uniswap V3 ring-buffer layout with 65,535 slots.
+  Observations track `sumX` and `sumXSq` instead of `sqrtPrice`.
+- **Emergency pause.** The factory owner can halt `mint`/`swap`/`burn` across
+  every pool via `setPaused(bool)`. `collect` deliberately stays open so LPs
+  can always withdraw credited fees.
+- **No protocol fee, no upgradeability, no native ETH, no flash loans** in the
+  prototype surface.
+- **Python / Solidity parity.** The [simulation/](../simulation/) scripts use
+  78-digit `Decimal` arithmetic to reproduce the same invariants as the
+  on-chain code, letting any Solidity result be cross-checked against the paper.
 
 ---
 
@@ -96,7 +168,7 @@ forge script script/DeploySepolia.s.sol \
     --broadcast --verify
 ```
 
-Written to `deployments/sepolia.json`.
+Addresses written to `deployments/sepolia.json`.
 
 ---
 
@@ -116,7 +188,7 @@ router.exactInput(OrbitalRouter.SwapParams({
 }));
 ```
 
-`exactOutput` works symmetrically — `amountIn` is the max you'll spend.
+`exactOutput` works symmetrically — `amountIn` is the max you will spend.
 
 ### Quote before swapping
 
@@ -157,33 +229,6 @@ router.multicall(calls);
 
 ---
 
-## Architecture cheatsheet
-
-| Uniswap V3                    | Orbital                           | Notes                                |
-| ----------------------------- | --------------------------------- | ------------------------------------ |
-| `UniswapV3Factory`            | `OrbitalFactory`                  | Same create+registry pattern         |
-| `UniswapV3Pool`               | `OrbitalPool`                     | Sphere/torus instead of `x·y=k`      |
-| `SwapRouter`                  | `OrbitalRouter`                   | Assets are indices not addresses     |
-| `NonfungiblePositionManager`  | `OrbitalPositionManager`          | Identical ERC-721 flow               |
-| `Quoter`                      | `OrbitalQuoter`                   | Same revert-extraction pattern       |
-| `TickMath`                    | `SphereMath`                      | Sphere geometry, no log ticks        |
-| `SqrtPriceMath`               | `TorusMath`                       | Newton solver for torus invariant    |
-| `Oracle`                      | `OrbitalOracle`                   | TWAP on `sumX`, `sumXSq`             |
-| `sqrtPriceX96` (Q64.96)       | `sumX`, `sumXSq` (WAD)            | Different hot-state encoding         |
-| `liquidity` (uint128)         | `rInt` (WAD)                      | Consolidated interior radius         |
-| `tick` (int24 log bucket)     | `tick` (k plane constant, WAD)    | Nested ticks, not disjoint           |
-| 2 tokens                      | N tokens (n ≥ 2)                  | The main differentiator              |
-
-Invariants enforced on every mint/swap/burn:
-
-1. Torus LHS ≈ `rInt²` with relative drift < 1 ppm
-2. `sumX == Σ reserves[i]`
-3. `sumXSq == Σ reserves[i]² / WAD`
-4. `rInt == Σ r over interior ticks`
-5. `kBound`, `sBound == Σ k, s over boundary ticks`
-
----
-
 ## Admin surface
 
 - `factory.setPaused(bool)` — emergency halt on mint/swap/burn across all
@@ -197,20 +242,24 @@ Invariants enforced on every mint/swap/burn:
 
 ## Testing
 
-Tests are organised by component:
+134 tests across 8 suites — all pass on `forge test`.
 
-| Suite                     | Covers                                        |
-| ------------------------- | --------------------------------------------- |
-| `SphereMathTest`          | √n, equal-price point, ‖w‖², spot price       |
-| `TorusMathTest`           | Invariant check, Newton solver convergence    |
-| `TickLibTest`             | `kMin`/`kMax` bounds, capital efficiency      |
-| `OrbitalOracleTest`       | TWAP ring buffer growth + observe window      |
-| `OrbitalFactoryTest`      | Create pool, fee tiers, pause, owner transfer |
-| `OrbitalPoolMintTest`     | Mint geometry, tick boundary handling         |
-| `OrbitalPoolTest`         | Swaps, crossings, fee accrual, fuzz/invariant |
-| `OrbitalRouterTest`       | Exact-in/out, slippage, deadline, pause, multicall |
+| Suite                 | Covers                                             |
+| --------------------- | -------------------------------------------------- |
+| `SphereMathTest`      | √n, equal-price point, ‖w‖², spot price            |
+| `TorusMathTest`       | Invariant check, Newton solver convergence         |
+| `TickLibTest`         | `kMin`/`kMax` bounds, capital efficiency           |
+| `OrbitalOracleTest`   | TWAP ring buffer growth + observe window           |
+| `OrbitalFactoryTest`  | Create pool, fee tiers, pause, owner transfer      |
+| `OrbitalPoolMintTest` | Mint geometry, tick boundary handling              |
+| `OrbitalPoolTest`     | Swaps, crossings, fee accrual, fuzz, invariants    |
+| `OrbitalRouterTest`   | Exact-in/out, slippage, deadline, pause, multicall |
 
-Run invariant suites explicitly with `forge test --match-test invariant_`.
+Run invariant suites explicitly:
+
+```bash
+forge test --match-test invariant_
+```
 
 ---
 

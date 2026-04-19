@@ -93,6 +93,7 @@ export function WalletButton() {
         style={{
           background: "var(--color-primary)",
           color: "var(--color-background)",
+          border: "1px solid var(--color-primary)",
         }}
       >
         {isPending ? "Connecting…" : "Connect Wallet"}
