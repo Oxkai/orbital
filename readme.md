@@ -163,19 +163,6 @@ Pool seeded with 4 LP positions at `k_norm ∈ {1.050, 1.150, 1.275, 1.375}`,
 
 ---
 
-## Quick start
-
-```bash
-cd contracts
-forge build
-forge test
-```
-
-For local deployment, integration snippets, and the full contract reference see
-[contracts/README.md](contracts/README.md).
-
----
-
 ## References
 
 - Paradigm Orbital paper — https://www.paradigm.xyz/2025/06/orbital
