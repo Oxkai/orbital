@@ -119,25 +119,44 @@ export function usePoolData(): PoolData {
 
   if (!isLoading && numTicks > 0) {
     console.group("=== Orbital Pool (on-chain) ===");
-    console.log("pool     :", ADDRESSES.pool);
-    console.log("n        :", nAssets);
-    console.log("rInt     :", rInt.toFixed(4));
-    console.log("fee      :", (result.fee / 10000).toFixed(2) + "%");
-    console.log("numTicks :", numTicks);
+    console.log("--- RAW tick data from contract (bigint, pre-WAD) ---");
+    for (let i = 0; i < Math.min(numTicks, MAX_TICKS); i++) {
+      const raw = d2?.[i]?.result as readonly [bigint, bigint, boolean, bigint, bigint] | undefined;
+      if (!raw) continue;
+      console.log(`tick[${i}] →`, {
+        k_raw:            raw[0].toString(),
+        r_raw:            raw[1].toString(),
+        isInterior:       raw[2],
+        feeGrowthInside:  raw[3].toString(),
+        liquidityGross:   raw[4].toString(),
+      });
+    }
+    console.log("pool          :", ADDRESSES.pool);
+    console.log("n             :", nAssets);
+    console.log("rInt          :", rInt.toFixed(6));
+    console.log("fee           :", (result.fee / 10000).toFixed(2) + "%");
+    console.log("numTicks      :", numTicks);
+    console.log("--- slot0 ---");
+    console.log("sumX  (Σxᵢ)   :", sumX.toFixed(6));
+    console.log("sumXSq (Σxᵢ²) :", sumXSq.toFixed(6));
+    console.log("kBound        :", kBound.toFixed(6), "  ← active tick boundary k");
+    console.log("sBound        :", sBound.toFixed(6), "  ← active tick boundary s");
     console.log("--- Derived ---");
-    console.log("q (equal-price) :", q.toFixed(4));
-    console.log("α (current)     :", alpha.toFixed(4));
-    console.log("kBound (active) :", kBound.toFixed(4));
-    console.log("sBound (active) :", sBound.toFixed(4));
+    console.log("q  (equal-price point) :", q.toFixed(6), "  = rInt - rInt/√N");
+    console.log("α  (current position)  :", alpha.toFixed(6), "  = sumX/√N");
     console.log("--- Reserves ---");
     console.table(reserves);
-    console.log("sumX  (Σxᵢ)    :", sumX.toFixed(4));
-    console.log("sumXSq (Σxᵢ²)  :", sumXSq.toFixed(4));
-    console.log("--- Ticks ---");
+    console.log("--- Ticks (all fields) ---");
     console.table(ticks.map(t => ({
-      index: t.index, k: t.k.toFixed(4), r: t.r.toFixed(4),
-      s: t.s.toFixed(4), kNorm: t.kNorm.toFixed(4),
-      isInterior: t.isInterior, liquidityGross: t.liquidityGross,
+      "#":            t.index,
+      "k (contract)": t.k.toFixed(6),
+      "r (contract)": t.r.toFixed(6),
+      "s = √(r²-(r√N-k)²)": t.s.toFixed(6),
+      "kNorm = k/r":  t.kNorm.toFixed(6),
+      "kMin = r(√N-1)": t.kMin.toFixed(6),
+      "kMax = r(N-1)/√N": t.kMax.toFixed(6),
+      "isInterior":   t.isInterior,
+      "liquidityGross": t.liquidityGross,
     })));
     console.groupEnd();
   }

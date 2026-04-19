@@ -10,10 +10,10 @@ export default function Home() {
   const pool = usePoolData();
 
   const reserves = pool.isLoading || pool.reserves.USDC === 0
-    ? { USDC: 60, DAI: 80, FRAX: 40, USDT: 70 }
+    ? { USDC: 0, DAI: 0, FRAX: 0, USDT: 0 }
     : pool.reserves;
 
-  const radius = pool.rInt > 0 ? pool.rInt : 100;
+  const radius = pool.rInt > 0 ? pool.rInt : 0;
 
   return (
     <main className="h-screen flex flex-col overflow-hidden" style={{ background: "var(--color-background)" }}>
@@ -25,45 +25,17 @@ export default function Home() {
       >
         {/* Brand */}
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-5 h-5 rounded-md flex items-center justify-center"
-            style={{ background: "var(--color-accent)" }}
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-              <circle cx="5" cy="5" r="3.5" stroke="white" strokeWidth="1.4" />
-              <circle cx="5" cy="5" r="1" fill="white" />
-            </svg>
-          </div>
+         
           <span className="text-[13px] font-semibold tracking-tight" style={{ color: "var(--color-primary)" }}>
             Orbital
           </span>
           <span
             className="text-[10px] font-mono px-1.5 py-0.5 rounded"
-            style={{ background: "var(--color-accent-dim)", color: "var(--color-accent)" }}
+            style={{ background: "var(--color-quaternary)", color: "var(--color-secondary)" }}
           >
             AMM
           </span>
         </div>
-
-        {/* Nav links */}
-        <nav className="flex items-center gap-1">
-          {[
-            { label: "Simulate", active: false },
-            { label: "Swap",     active: true  },
-            { label: "Docs",     active: false },
-          ].map(({ label, active }) => (
-            <button
-              key={label}
-              className="px-3 py-1.5 rounded-md text-[11px] font-mono transition-all duration-150"
-              style={{
-                background: active ? "var(--color-surface-alt)" : "transparent",
-                color: active ? "var(--color-primary)" : "var(--color-tertiary)",
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
 
         {/* Controls */}
         <div className="flex items-center gap-2">
@@ -82,7 +54,10 @@ export default function Home() {
             reserves={reserves}
             ticks={pool.ticks}
             nAssets={pool.n}
-            size={480}
+            sumX={pool.sumX}
+            sumXSq={pool.sumXSq}
+            kBound={pool.kBound}
+            sBound={pool.sBound}
           />
         </div>
 
@@ -116,7 +91,7 @@ export default function Home() {
         className="shrink-0 px-6 h-9 flex items-center justify-between"
         style={{ borderTop: "1px solid var(--color-border)" }}
       >
-        <span className="text-[10px] font-mono" style={{ color: "var(--color-muted)" }}>
+        <span className="text-[10px] font-mono" style={{ color: "var(--color-tertiary)" }}>
           © 2025 Orbital · Built on{" "}
           <span style={{ color: "var(--color-tertiary)" }}>Paradigm research</span>
         </span>

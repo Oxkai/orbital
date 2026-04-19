@@ -17,11 +17,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
+    if (theme === "dark") root.classList.add("dark");
+    else root.classList.remove("dark");
   }, [theme]);
 
   function toggle() {
@@ -43,28 +40,31 @@ export function ThemeToggle() {
     <button
       onClick={toggle}
       aria-label="Toggle theme"
-      className="flex items-center gap-2 px-2.5 py-1.5 rounded text-tertiary hover:text-secondary transition-all duration-150"
-      style={{ background: "var(--color-surface)" }}
+      className="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-150 hover:opacity-80 active:scale-95"
+      style={{
+        background: "var(--color-surface)",
+        border: "1px solid var(--color-border)",
+        color: "var(--color-tertiary)",
+      }}
     >
       {isDark ? (
-        /* sun icon */
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-          <circle cx="6.5" cy="6.5" r="2.5" stroke="currentColor" strokeWidth="1.3" />
+        /* sun */
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="2.8" stroke="currentColor" strokeWidth="1.3" />
           <path
-            d="M6.5 1v1.2M6.5 10.8V12M1 6.5h1.2M10.8 6.5H12M2.7 2.7l.85.85M9.45 9.45l.85.85M2.7 10.3l.85-.85M9.45 3.55l.85-.85"
+            d="M7 1.5v1.2M7 11.3v1.2M1.5 7h1.2M11.3 7h1.2M3.2 3.2l.85.85M9.95 9.95l.85.85M3.2 10.8l.85-.85M9.95 4.05l.85-.85"
             stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
           />
         </svg>
       ) : (
-        /* moon icon */
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+        /* moon */
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
           <path
-            d="M11 7.5A5 5 0 015.5 2a5 5 0 100 9 5 5 0 005.5-3.5z"
+            d="M11.5 8A5 5 0 016 2.5a5 5 0 100 9 5 5 0 005.5-3.5z"
             stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"
           />
         </svg>
       )}
-      <span className="text-[10px] font-mono">{isDark ? "light" : "dark"}</span>
     </button>
   );
 }

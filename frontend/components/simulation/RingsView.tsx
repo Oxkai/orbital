@@ -8,11 +8,15 @@ interface RingsGeo {
   cx:          number;
   cy:          number;
   maxR:        number;
+  axisR:       number;
   ticksWithS:  TickWithS[];
   maxS:        number;
   scale:       number;
   reserveDot:  ReserveDot | null;
   tooltipPos:  (rSvg: number) => [number, number];
+  sphereRadii: { r: number; rSvg: number }[];
+  rInt:        number;
+  rIntSvg:     number;
 }
 
 interface Props {
@@ -22,20 +26,20 @@ interface Props {
 }
 
 export default function RingsView({ geo, hoveredTick, onHover }: Props) {
-  const { N, q, cx, cy, maxR, ticksWithS, maxS, scale, reserveDot, tooltipPos } = geo;
+  const { N, q, cx, cy, axisR, ticksWithS, maxS, scale, reserveDot, tooltipPos, sphereRadii, rInt, rIntSvg } = geo;
   const f = (v: number) => v.toFixed(3);
 
   const hovered = hoveredTick !== null ? ticksWithS.find(t => t.index === hoveredTick) ?? null : null;
 
   return (
     <>
-      {/* Coin axes */}
+      {/* Coin axes — length tracks zoom via axisR */}
       {COINS.map((coin, i) => {
         const angle = (i / N) * Math.PI * 2 - Math.PI / 2;
-        const lx    = cx + Math.cos(angle) * maxR;
-        const ly    = cy + Math.sin(angle) * maxR;
-        const lxL   = cx + Math.cos(angle) * (maxR + 22);
-        const lyL   = cy + Math.sin(angle) * (maxR + 22);
+        const lx    = cx + Math.cos(angle) * axisR;
+        const ly    = cy + Math.sin(angle) * axisR;
+        const lxL   = cx + Math.cos(angle) * (axisR + 22);
+        const lyL   = cy + Math.sin(angle) * (axisR + 22);
         return (
           <g key={coin}>
             <line x1={cx} y1={cy} x2={lx} y2={ly} stroke="var(--color-primary)" strokeWidth={0.6} strokeOpacity={0.15} />
@@ -44,6 +48,34 @@ export default function RingsView({ geo, hoveredTick, onHover }: Props) {
           </g>
         );
       })}
+
+      {/* Sphere r circles */}
+      {sphereRadii.map(({ r, rSvg }) => (
+        <g key={r}>
+          <circle cx={cx} cy={cy} r={rSvg} fill="none"
+            stroke="var(--color-primary)" strokeWidth={1} strokeOpacity={0.25} strokeDasharray="6 4" />
+          <text
+            x={cx + rSvg * Math.cos(-Math.PI / 4) + 4}
+            y={cy + rSvg * Math.sin(-Math.PI / 4) - 4}
+            fontSize={8} fontFamily="monospace"
+            fill="var(--color-primary)" fillOpacity={0.55} textAnchor="start">
+            r={f(r)}
+          </text>
+        </g>
+      ))}
+
+      {/* rInt — pool sphere radius from contract */}
+      <g>
+        <circle cx={cx} cy={cy} r={rIntSvg} fill="none"
+          stroke="#60a5fa" strokeWidth={1.5} strokeOpacity={0.5} />
+        <text
+          x={cx + rIntSvg * Math.cos(Math.PI / 4) + 4}
+          y={cy + rIntSvg * Math.sin(Math.PI / 4) - 4}
+          fontSize={8.5} fontFamily="monospace"
+          fill="#60a5fa" fillOpacity={0.75} textAnchor="start">
+          rInt={f(rInt)}
+        </text>
+      </g>
 
       {/* Tick rings — outermost first */}
       {[...ticksWithS].sort((a, b) => b.sEff - a.sEff).map(tick => {

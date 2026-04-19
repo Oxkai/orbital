@@ -24,10 +24,13 @@ contracts/todo.md
 contracts/bug.md
 contracts/SECURITY.md
 contracts/paper.md
+frontend/TICKS.md
+frontend/scripts/
 
 # Foundry artifacts
 contracts/broadcast/
 contracts/deployments/
+broadcast/
 contracts/node_modules/
 contracts/build/
 contracts/cache/

@@ -1,60 +1,39 @@
 @import "tailwindcss";
 
 :root {
-  --background:    #F5EEE6;
-  --bg-subtle:     #EDE5DC;
-  --primary:       #111111;
-  --secondary:     #555555;
-  --tertiary:      #888888;
-  --muted:         #BBBBBB;
-  --quaternary:    #E0D7CE;
-  --surface:       #FEFAF5;
-  --surface-alt:   #F5EFE8;
-  --surface-raised:#FFFFFF;
-  --border:        #E0D7CE;
-  --border-strong: #C8BFB5;
-  --accent:        #6B5FE4;
-  --accent-dim:    #EAE8FC;
-  --green:         #16A34A;
-  --red:           #DC2626;
+  --background:    #EFE3D1;
+  --primary:       #151210;
+  --secondary:     #666666;
+  --tertiary:      #999999;
+  --quaternary:    #DDD2C6;
+  --surface:       #FFF8EF;
+  --surface-alt:   #F8F3EC;
+  --border:        #DDD2C6;
+  --border-strong: #151210;
 }
 
 .dark {
-  --background:    #0C0F0E;
-  --bg-subtle:     #0F1412;
-  --primary:       #F0EAE2;
-  --secondary:     #C4B9AE;
-  --tertiary:      #8A7F76;
-  --muted:         #4A433D;
-  --quaternary:    #1E2422;
-  --surface:       #141A18;
-  --surface-alt:   #181F1D;
-  --surface-raised:#1E2624;
-  --border:        #232B28;
-  --border-strong: #2E3835;
-  --accent:        #7C71F0;
-  --accent-dim:    #1E1C3A;
-  --green:         #22C55E;
-  --red:           #F87171;
+  --background:    #0d1110;
+  --primary:       #f6efe6;
+  --secondary:     #d1c5ba;
+  --tertiary:      #a89d91;
+  --quaternary:    #2A2520;
+  --surface:       #18201D;
+  --surface-alt:   #191c1a;
+  --border:        #2A2520;
+  --border-strong: #312d29;
 }
 
 @theme inline {
   --color-background:    var(--background);
-  --color-bg-subtle:     var(--bg-subtle);
   --color-primary:       var(--primary);
   --color-secondary:     var(--secondary);
   --color-tertiary:      var(--tertiary);
-  --color-muted:         var(--muted);
   --color-quaternary:    var(--quaternary);
   --color-surface:       var(--surface);
   --color-surface-alt:   var(--surface-alt);
-  --color-surface-raised:var(--surface-raised);
   --color-border:        var(--border);
   --color-border-strong: var(--border-strong);
-  --color-accent:        var(--accent);
-  --color-accent-dim:    var(--accent-dim);
-  --color-green:         var(--green);
-  --color-red:           var(--red);
   --font-mono: var(--font-geist-mono);
 }
 
