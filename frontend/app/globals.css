@@ -1,68 +1,17 @@
 @import "tailwindcss";
 
-:root {
-  --background:    #EFE3D1;
-  --primary:       #151210;
-  --secondary:     #666666;
-  --tertiary:      #999999;
-  --quaternary:    #DDD2C6;
-  --surface:       #FFF8EF;
-  --surface-alt:   #F8F3EC;
-  --border:        #DDD2C6;
-  --border-strong: #151210;
-}
-
-.dark {
-  --background:    #0d1110;
-  --primary:       #f6efe6;
-  --secondary:     #d1c5ba;
-  --tertiary:      #a89d91;
-  --quaternary:    #2A2520;
-  --surface:       #18201D;
-  --surface-alt:   #191c1a;
-  --border:        #2A2520;
-  --border-strong: #312d29;
-}
-
 @theme inline {
-  --color-background:    var(--background);
-  --color-primary:       var(--primary);
-  --color-secondary:     var(--secondary);
-  --color-tertiary:      var(--tertiary);
-  --color-quaternary:    var(--quaternary);
-  --color-surface:       var(--surface);
-  --color-surface-alt:   var(--surface-alt);
-  --color-border:        var(--border);
-  --color-border-strong: var(--border-strong);
-  --font-mono: var(--font-geist-mono);
-}
-
-*, *::before, *::after {
-  font-family: var(--font-geist-mono), monospace;
-  box-sizing: border-box;
-}
-
-html, body {
-  height: 100%;
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--primary);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.03em;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
 }
 
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  appearance: none;
-  margin: 0;
+:root:not([data-layout-grid="visible"]) #layout-grid-overlay {
+  display: none;
 }
-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
-
-/* Scrollbar */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: var(--tertiary); }

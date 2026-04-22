@@ -1,23 +1,24 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Roboto, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/ThemeProvider";
-import { Web3Provider } from "@/components/Web3Provider";
+import LayoutGrid from "@/components/layout/LayoutGrid";
+import { getThemeCssVariables } from "@/constants";
 
-const geistMono = localFont({
-  src: [
-    { path: "../public/Geist_Mono/static/GeistMono-Regular.ttf",  weight: "400", style: "normal" },
-    { path: "../public/Geist_Mono/static/GeistMono-Medium.ttf",   weight: "500", style: "normal" },
-    { path: "../public/Geist_Mono/static/GeistMono-SemiBold.ttf", weight: "600", style: "normal" },
-    { path: "../public/Geist_Mono/static/GeistMono-Bold.ttf",     weight: "700", style: "normal" },
-  ],
-  variable: "--font-geist-mono",
-  display: "block",
+const roboto = Roboto({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "700"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Swap",
-  description: "",
+  title: "Orbital — N-asset stablecoin AMM",
+  description:
+    "One pool. N stablecoins. 154× the capital efficiency of a flat sphere. Concentrated liquidity with automatic depeg isolation. Derived from the Paradigm Orbital paper.",
 };
 
 export default function RootLayout({
@@ -26,11 +27,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistMono.variable} h-full dark`}>
-      <body className="min-h-full flex flex-col">
-        <Web3Provider>
-          <ThemeProvider>{children}</ThemeProvider>
-        </Web3Provider>
+    <html
+      lang="en"
+      className={`${roboto.variable} ${geistMono.variable} h-full antialiased`}
+      data-layout-grid="hidden"
+      style={getThemeCssVariables("dark")}
+    >
+      <body
+        className="min-h-full flex flex-col"
+      >
+        {children}
+         {process.env.NODE_ENV === "development" && <LayoutGrid />}
       </body>
     </html>
   );
