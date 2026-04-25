@@ -67,3 +67,16 @@ export const typography = {
 } as const;
 
 export type TypographyKey = keyof typeof typography;
+
+export function typeStyle(key: TypographyKey): React.CSSProperties {
+  const t = typography[key];
+  const s: React.CSSProperties = {
+    fontFamily: t.family,
+    fontSize: t.size,
+    lineHeight: t.lineHeight,
+    letterSpacing: t.letterSpacing,
+    fontWeight: t.weight as React.CSSProperties["fontWeight"],
+  };
+  if ("textDecoration" in t) s.textDecoration = t.textDecoration;
+  return s;
+}

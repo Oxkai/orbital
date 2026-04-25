@@ -18,6 +18,9 @@ build/
 .DS_Store
 broadcast/
 issue.md
+design system inspo/
+AGENTS.md
+CLAUDE.md
 
 # Internal planning / working docs — not for public consumption.
 contracts/todo.md
@@ -57,3 +60,4 @@ Thumbs.db
 
 # Claude Code local state
 .claude/
+

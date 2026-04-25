@@ -53,7 +53,7 @@ export function Mechanics() {
     <section
       className="mx-6 my-1"
     >
-      <SectionLabel chapter="III" section="02" path="PROTOCOL / MECHANICS" />
+      <SectionLabel border chapter="III" section="02" path="ORBITAL / MECHANICS" />
 
       <div className="grid grid-cols-1 pt-20 pb-12">
        
@@ -73,7 +73,7 @@ export function Mechanics() {
       </div>
 
       <div
-        className=" pb-20"
+        className=" pb-12"
         style={{ borderColor: color.borderSubtle }}
       >
         <p
@@ -93,7 +93,41 @@ export function Mechanics() {
           </span>
         </p>
       </div>
+
+      <div className="grid grid-cols-12 gap-5 pb-24">
+        {CARDS.map((card) => (
+          <article key={card.n} className="col-span-12 flex flex-col gap-4 md:col-span-3">
+            <div
+              className="flex items-center gap-6"
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "10px",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: color.textMuted,
+              }}
+            >
+              <span>{card.n} /</span>
+              <span style={{ color: color.textPrimary }}>{card.title}</span>
+            </div>
+
+            <p
+              style={{
+                fontFamily: typography.h2.family,
+                fontSize: "clamp(16px, 1.25vw, 14px)",
+                lineHeight: "22px",
+                letterSpacing: "0em",
+                color: color.textPrimary,
+                fontWeight: 400,
+                
+              }}
+            >
+              {card.body}
+            </p>
+          </article>
+        ))}
+      </div>
+
     </section>
   );
 }
-

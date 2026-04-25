@@ -1,52 +1,32 @@
-# Orbital AMM — Contracts
+# Orbital — Contracts
 
-The Solidity implementation of the [Orbital](../README.md) multi-asset
-stablecoin AMM. Built with Foundry, structured after Uniswap V3
-(factory + pool + callback router + ERC-721 position manager), but with the
-sphere/torus invariant from the Paradigm Orbital paper replacing the `x·y=k`
-curve so the pool can hold N ≥ 2 assets.
+The Solidity implementation of the [Orbital](../README.md) multi-asset stablecoin AMM. Built with Foundry, structured after Uniswap V3 (factory + pool + router + ERC-721 position manager), with the sphere/torus invariant replacing `x·y=k` to support N ≥ 2 assets in a single pool.
 
-> **Status:** research prototype. The full Foundry suite (unit, fuzz, and
-> invariant tests) passes on `forge test`. Not audited.
+Hot state is compressed to five WAD-scaled aggregates (`sumX`, `sumXSq`, `rInt`, `kBound`, `sBound`) in `slot0`, so every mint, swap, and burn verifies the torus invariant in O(1) — no iteration over ticks or assets. Each LP position sets a k-plane defining its depeg tolerance independently, and all math is cross-validated against the Python reference implementation in [`simulation/`](../simulation/).
 
----
-
-## Table of contents
-
-- [Contract reference](#contract-reference)
-- [Layout](#layout)
-- [Architecture cheatsheet](#architecture-cheatsheet)
-- [Invariants](#invariants)
-- [Implementation notes](#implementation-notes)
-- [Quick start](#quick-start)
-- [Using the protocol](#using-the-protocol)
-- [Admin surface](#admin-surface)
-- [Testing](#testing)
-- [Further reading](#further-reading)
+> Research prototype — full test suite passes on `forge test`. Not audited.
 
 ---
 
 ## Contract reference
 
-| Layer     | Contract                      | What it does                                       |
+| Layer     | Contract                      | Description                                        |
 | --------- | ----------------------------- | -------------------------------------------------- |
 | Core      | `OrbitalFactory`              | Deploys pools, tracks fee tiers, global pause flag |
 | Core      | `OrbitalPoolDeployer`         | Holds constructor params during CREATE2 deployment |
-| Core      | `OrbitalPool`                 | The AMM itself — mint, swap, burn, collect, oracle |
+| Core      | `OrbitalPool`                 | The AMM — mint, swap, burn, collect, oracle        |
 | Periphery | `OrbitalRouter`               | `exactInput` / `exactOutput` swaps with deadline   |
 | Periphery | `OrbitalQuoter`               | Off-chain price preview (V3 revert-style)          |
 | Periphery | `OrbitalPositionManager`      | Each LP position is an ERC-721                     |
-| Periphery | `OrbitalDescriptor`           | Token URI hook for the position NFT                |
+| Periphery | `OrbitalDescriptor`           | Token URI hook for position NFTs                   |
 | Lib       | `SphereMath`                  | √n, equal-price point, ‖w‖², spot price            |
 | Lib       | `TorusMath`                   | Torus invariant check + Newton swap solver         |
 | Lib       | `TickLib`                     | `kMin`, `kMax`, capital efficiency, tick geometry  |
 | Lib       | `PositionLib`                 | Position key + fee-growth accounting               |
 | Lib       | `OrbitalOracle`               | TWAP ring buffer (65,535 slots, V3-style)          |
-| Lib       | `FullMath` / `TransferHelper` | 512-bit mulDiv + safe ERC-20 transfers (from V3)   |
+| Lib       | `FullMath` / `TransferHelper` | 512-bit mulDiv + safe ERC-20 transfers             |
 
-All pool math is WAD-native (1e18 fixed point). The factory rejects tokens
-whose `decimals()` is not 18 — mixing decimals would desynchronise callback
-transfer amounts from pool state.
+All pool math is WAD-native (1e18). The factory rejects tokens with `decimals() != 18`.
 
 ---
 
@@ -59,70 +39,13 @@ contracts/
 │   ├── periphery/     Router, Quoter, PositionManager, Descriptor
 │   ├── lib/           SphereMath, TorusMath, TickLib, PositionLib,
 │   │                  OrbitalOracle, FullMath, TransferHelper
-│   ├── interfaces/    IOrbitalFactory, IOrbitalPool* (split V3-style),
-│   │                  callback interfaces, IERC20Minimal, IERC20Metadata
+│   ├── interfaces/    IOrbitalFactory, IOrbitalPool, callback interfaces
 │   └── mocks/         MockERC20, mint/swap callback helpers
 ├── script/            Deploy, DeploySepolia, Seed, SimulateDepeg
 ├── test/              Unit, fuzz, invariant tests (134 tests, 8 suites)
-├── deployments/       Per-network address JSON (written by scripts)
+├── deployments/       Per-network address JSON (written by deploy scripts)
 └── foundry.toml
 ```
-
----
-
-## Architecture cheatsheet
-
-| Uniswap V3                   | Orbital                  | Notes                             |
-| ---------------------------- | ------------------------ | --------------------------------- |
-| `UniswapV3Factory`           | `OrbitalFactory`         | Same create+registry pattern      |
-| `UniswapV3Pool`              | `OrbitalPool`            | Sphere/torus instead of `x·y=k`  |
-| `SwapRouter`                 | `OrbitalRouter`          | Assets are indices not addresses  |
-| `NonfungiblePositionManager` | `OrbitalPositionManager` | Identical ERC-721 flow            |
-| `Quoter`                     | `OrbitalQuoter`          | Same revert-extraction pattern    |
-| `TickMath`                   | `SphereMath`             | Sphere geometry, no log ticks     |
-| `SqrtPriceMath`              | `TorusMath`              | Newton solver for torus invariant |
-| `Oracle`                     | `OrbitalOracle`          | TWAP on `sumX`, `sumXSq`          |
-| `sqrtPriceX96` (Q64.96)      | `sumX`, `sumXSq` (WAD)   | Different hot-state encoding      |
-| `liquidity` (uint128)        | `rInt` (WAD)             | Consolidated interior radius      |
-| `tick` (int24 log bucket)    | `tick` (k plane, WAD)    | Nested ticks, not disjoint        |
-| 2 tokens                     | N tokens (n ≥ 2)         | The main differentiator           |
-
----
-
-## Invariants
-
-Enforced on every mint, swap, and burn:
-
-1. Torus LHS ≈ `rInt²` with relative drift < 1 ppm
-2. `sumX == Σ reserves[i]`
-3. `sumXSq == Σ reserves[i]² / WAD`
-4. `rInt == Σ r over interior ticks`
-5. `kBound`, `sBound == Σ k, s over boundary ticks`
-
-A failing check reverts the transaction.
-
----
-
-## Implementation notes
-
-- **Precision.** All pool values are WAD-scaled (1e18). Every multiplication
-  that could overflow 256 bits goes through `FullMath.mulDiv` (Uniswap's
-  512-bit helper).
-- **Decimal enforcement.** The factory rejects tokens whose `decimals()` is
-  not 18 so that callback transfer amounts remain consistent with on-chain pool
-  state.
-- **Reentrancy.** Every state-changing entrypoint on the pool is guarded by a
-  single `lock` modifier backed by `slot0.unlocked`.
-- **Oracle.** Uses the Uniswap V3 ring-buffer layout with 65,535 slots.
-  Observations track `sumX` and `sumXSq` instead of `sqrtPrice`.
-- **Emergency pause.** The factory owner can halt `mint`/`swap`/`burn` across
-  every pool via `setPaused(bool)`. `collect` deliberately stays open so LPs
-  can always withdraw credited fees.
-- **No protocol fee, no upgradeability, no native ETH, no flash loans** in the
-  prototype surface.
-- **Python / Solidity parity.** The [simulation/](../simulation/) scripts use
-  78-digit `Decimal` arithmetic to reproduce the same invariants as the
-  on-chain code, letting any Solidity result be cross-checked against the paper.
 
 ---
 
@@ -131,27 +54,20 @@ A failing check reverts the transaction.
 ```bash
 forge build
 forge test
-forge test -vv                    # verbose
+forge test -vv
 forge test --match-contract OrbitalPoolTest --fuzz-runs 1000
 ```
 
-### Local deploy + seed
+### Local deploy
 
 ```bash
-# 1. Start a local node
 anvil &
 
-# 2. Deploy factory, mocks, pool, router, quoter, position manager
-forge script script/Deploy.s.sol --broadcast \
-    --rpc-url http://localhost:8545
+forge script script/Deploy.s.sol --broadcast --rpc-url http://localhost:8545
+forge script script/Seed.s.sol --broadcast --rpc-url http://localhost:8545
 
-# 3. Mint tokens, add 4 LPs at different k_norm, run 20 swaps
-forge script script/Seed.s.sol --broadcast \
-    --rpc-url http://localhost:8545
-
-# 4. Optional: 50 escalating USDC→USDT swaps exercising depeg dynamics
-forge script script/SimulateDepeg.s.sol --broadcast \
-    --rpc-url http://localhost:8545
+# Optional: 50 escalating swaps exercising depeg dynamics
+forge script script/SimulateDepeg.s.sol --broadcast --rpc-url http://localhost:8545
 ```
 
 Addresses land in `deployments/local.json`.
@@ -174,12 +90,12 @@ Addresses written to `deployments/sepolia.json`.
 
 ## Using the protocol
 
-### Swap (via router)
+### Swap
 
 ```solidity
 router.exactInput(OrbitalRouter.SwapParams({
     pool:         poolAddr,
-    assetIn:      0,                // index into pool.tokens()
+    assetIn:      0,          // index into pool.tokens()
     assetOut:     1,
     amountIn:     1_000e18,
     amountOutMin: 990e18,
@@ -188,19 +104,18 @@ router.exactInput(OrbitalRouter.SwapParams({
 }));
 ```
 
-`exactOutput` works symmetrically — `amountIn` is the max you will spend.
+`exactOutput` works symmetrically — `amountIn` becomes the spend cap.
 
-### Quote before swapping
+### Quote
 
 ```solidity
 uint256 out = quoter.quoteExactInput(pool, 0, 1, 1_000e18);
-uint256 in_ = quoter.quoteExactOutput(pool, 0, 1, 500e18);
+uint256 in_ = quoter.quoteExactOutput(pool, 0, 1, 500e18, 510e18);
 ```
 
-The quoter uses V3's revert-return trick — it is **not** marked `view` but
-makes no state changes.
+The quoter uses V3's revert-return pattern — not `view`, but makes no state changes.
 
-### Add liquidity (via position manager)
+### Add liquidity
 
 ```solidity
 uint256 k = TickLib.kMin(rWad, n) + depegBuffer; // any k ∈ [kMin, kMax]
@@ -215,28 +130,7 @@ positionManager.mint(OrbitalPositionManager.MintParams({
 }));
 ```
 
-Each position is an ERC-721. `increaseLiquidity`, `decreaseLiquidity`,
-`collect`, and `burn` follow the V3 position manager API.
-
-### Multicall the router
-
-```solidity
-bytes[] memory calls = new bytes[](2);
-calls[0] = abi.encodeCall(router.exactInput, /* ... swap 1 ... */);
-calls[1] = abi.encodeCall(router.exactInput, /* ... swap 2 ... */);
-router.multicall(calls);
-```
-
----
-
-## Admin surface
-
-- `factory.setPaused(bool)` — emergency halt on mint/swap/burn across all
-  pools. `collect` stays open so LPs can always withdraw credited fees.
-- `factory.enableFeeAmount(uint24)` — add a new fee tier (cannot disable
-  existing ones).
-- `factory.setOwner` / `acceptOwner` — two-step ownership transfer.
-- No protocol fee, no upgradeability, no per-pool admin.
+Each position is an ERC-721. `increaseLiquidity`, `decreaseLiquidity`, `collect`, and `burn` follow the standard V3 position manager API.
 
 ---
 
@@ -254,8 +148,6 @@ router.multicall(calls);
 | `OrbitalPoolMintTest` | Mint geometry, tick boundary handling              |
 | `OrbitalPoolTest`     | Swaps, crossings, fee accrual, fuzz, invariants    |
 | `OrbitalRouterTest`   | Exact-in/out, slippage, deadline, pause, multicall |
-
-Run invariant suites explicitly:
 
 ```bash
 forge test --match-test invariant_

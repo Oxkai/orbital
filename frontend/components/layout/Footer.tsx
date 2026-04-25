@@ -25,14 +25,14 @@ const CHAPTERS = [
 ];
 
 const TOOLS = [
-  { letter: "A", label: "Figma" },
-  { letter: "B", label: "Next.js" },
-  { letter: "C", label: "Foundry" },
+  { letter: "A", label: "Next.js + Wagmi" },
+  { letter: "B", label: "Foundry" },
+  { letter: "C", label: "Figma" },
 ];
 
 const LINKS = [
-  { letter: "A", label: "orbital.network", href: "https://orbital.network" },
-  { letter: "B", label: "orbitalscan.com", href: "https://orbitalscan.com" },
+  { letter: "A", label: "Paradigm Orbital paper", href: "https://www.paradigm.xyz/2025/06/orbital" },
+  { letter: "B", label: "GitHub", href: "https://github.com/ajayodedra/O" },
 ];
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -54,8 +54,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export function Footer() {
   return (
     <footer
-      className="mt-auto mx-6 pt-10 pb-8 border-t"
-      style={{ borderColor: color.border, background: color.bg }}
+      className="mt-auto mx-6 pt-10 pb-8"
+      style={{background: color.bg }}
     >
       <div className="grid grid-cols-12 gap-5 pb-16">
         <div className="col-span-12 md:col-span-4">
@@ -195,21 +195,20 @@ export function Footer() {
               marginBottom: 12,
             }}
           >
-            <u>Do not</u> copy layouts of presentations, ideas, concepts.
+            Research implementation of the Paradigm Orbital paper.
             <br />
-            <u>Do not</u> copy the design, layout, or any other elements of our
-            application.
+            Deployed on Base Sepolia testnet — not production.
           </p>
           <p
             style={{
               fontFamily: typography.p2.family,
               fontSize: typography.p2.size,
               lineHeight: "22px",
-              color: color.textPrimary,
+              color: color.textMuted,
               marginBottom: 32,
             }}
           >
-            Get inspired, but with respect for our © copyright.
+            Not audited. Not financial advice.
           </p>
 
           <SectionLabel>WWW</SectionLabel>

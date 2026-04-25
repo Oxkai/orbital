@@ -18,7 +18,7 @@ const PILLARS: Pillar[] = [
     title: "Low slippage",
     lede: "At peg, trades move along the sphere's flat equator.",
     body: "Every LP's tick concentrates liquidity where stables actually trade. Routes stay tight through the full depth of the book — not just the first few basis points.",
-    metric: { value: "< 1", unit: "bps", caption: "typical impact, $1M swap" },
+    metric: { value: "< 1", unit: "bps", caption: "price impact at peg, p=0.99" },
     accent: colors.green.hex,
   },
   {
@@ -44,7 +44,7 @@ const PILLARS: Pillar[] = [
 export function Pillars() {
   return (
     <section className="mx-6">
-      <SectionLabel chapter="II" section="01" path="PROTOCOL / PILLARS" />
+      <SectionLabel border chapter="II" section="01" path="ORBITAL / PRINCIPLES" />
 
       <div className="grid grid-cols-12 gap-5 pt-20 pb-12">
         <h2
@@ -103,10 +103,10 @@ export function Pillars() {
               >
                 <span className="col-span-12 md:col-span-2">{`// II / 01 / ${letter}`}</span>
                 <span className="col-span-12 md:col-span-10">{`// PRINCIPLES / ${p.tag}`}</span>
-                <span className="hidden md:block md:col-span-1 text-right">{"/"}</span>
+               
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-y-10 md:gap-x-10 py-16 md:py-24">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-y-10 md:gap-x-10 py-20 md:py-12">
                 <div className="md:col-span-2">
                   <span
                     style={{
@@ -160,8 +160,7 @@ export function Pillars() {
                       maxWidth: "42ch",
                     }}
                   >
-                    {p.metric.caption}, measured against the equivalent flat-sphere
-                    pool under Orbital&apos;s reference parameters.
+                    {p.metric.caption} — measured against an equivalent flat-sphere pool.
                   </p>
 
                   <div
@@ -213,7 +212,7 @@ export function Pillars() {
           );
         })}
         <div
-          className="border-t border-dashed"
+          className=""
           style={{ borderColor: color.borderSubtle }}
         />
       </div>

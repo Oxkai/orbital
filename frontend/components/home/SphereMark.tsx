@@ -58,7 +58,7 @@ export function SphereMark() {
           textTransform: "uppercase",
         }}
       >
-        <span>// LIVE / RESERVE VECTOR</span>
+        <span>{"//"} LIVE / RESERVE VECTOR</span>
         <span>N = 4</span>
       </div>
 

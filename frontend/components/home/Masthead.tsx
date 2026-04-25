@@ -3,12 +3,11 @@ import { Emphasized } from "./Emphasized";
 import { SectionLabel } from "./SectionLabel";
 
 const INDEX = [
-  ["01", "Protocol Stats"],
+  ["01", "Principles"],
   ["02", "Mechanics"],
-  ["03", "Stress Test"],
-  ["04", "Versus"],
-  ["05", "Deployed"],
-  ["06", "References"],
+  ["03", "Versus"],
+  ["04", "Deployed"],
+  ["05", "References"],
 ] as const;
 
 export function Masthead() {
@@ -16,10 +15,9 @@ export function Masthead() {
     <>
       {/* I. Giant title */}
       <section
-        className="border-b mx-6"
-        style={{ borderColor: color.border }}
+        className="mx-6"
       >
-        <SectionLabel chapter="I" section="00" path="SCAN CASE STUDY / ORBITAL" />
+        <SectionLabel  chapter="I" section="00" path="Orbital" />
         <div className="relative pt-16 pb-10 md:pt-24 md:pb-16">
           <div className="grid grid-cols-12 gap-5">
             <h1
@@ -51,10 +49,10 @@ export function Masthead() {
 
       {/* I. Intro with emphasized copy */}
       <section
-        className="border-b mx-6 border-dashed"
+        className=" mx-6"
         style={{ borderColor: color.border }}
       >
-        <SectionLabel chapter="I" section="00" path="ORBITAL / INTRODUCTION" />
+        <SectionLabel border chapter="I" section="00" path="ORBITAL / INTRODUCTION" />
         <div className="grid grid-cols-12 gap-5 pt-14 pb-16">
           <div className="col-span-12">
           <Emphasized
@@ -122,7 +120,7 @@ export function Masthead() {
 
           {/* /INDEX */}
           <div
-            className="col-span-12 grid grid-cols-12 gap-5 mt-24 pt-4 border-t border-dashed"
+            className="col-span-12 grid grid-cols-12 gap-5 mt-24 pt-2 border-t "
             style={{ borderColor: color.borderSubtle }}
           >
             <div

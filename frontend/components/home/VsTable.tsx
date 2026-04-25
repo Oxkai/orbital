@@ -1,5 +1,5 @@
 import { color, colors, typography } from "@/constants";
-import { SectionFrame } from "./SectionFrame";
+import { SectionLabel } from "./SectionLabel";
 
 const COLUMNS = ["Uniswap V3", "Curve Stable", "Balancer", "Orbital"] as const;
 
@@ -49,130 +49,149 @@ const ROWS: Row[] = [
 
 export function VsTable() {
   return (
-    <SectionFrame index="04" sectionPath="FOUNDATION / COMPARISON" title="Versus">
-      <div
-        className="grid grid-cols-12 gap-5 border border-dashed"
-        style={{ borderColor: color.border }}
-      >
+    <section className="mx-6 my-1">
+      <SectionLabel border chapter="IV" section="03" path="ORBITAL / COMPARISON" />
+
+      <div className="pt-10 pb-14">
+        <div className="mb-10">
+          <h2
+            style={{
+              fontFamily: typography.h1.family,
+              fontSize: typography.h1.size,
+              lineHeight: typography.h1.lineHeight,
+              letterSpacing: typography.h1.letterSpacing,
+              fontWeight: 400,
+              color: color.textPrimary,
+            }}
+          >
+            Versus
+          </h2>
+        </div>
+
         <div
-          className="col-span-12 grid grid-cols-12 gap-5 py-3 border-b border-dashed"
-          style={{
-            borderColor: color.borderSubtle,
-            backgroundColor: color.surface1,
-          }}
+          className="grid grid-cols-12 gap-5 border border-dashed"
+          style={{ borderColor: color.border }}
         >
           <div
-            className="col-span-3 md:col-start-1 md:col-span-1 pl-2 md:pl-3"
+            className="col-span-12 grid grid-cols-12 gap-5 py-3 border-b border-dashed"
             style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "10px",
-              letterSpacing: "0.08em",
-              color: color.textMuted,
-              textTransform: "uppercase",
+              borderColor: color.borderSubtle,
+              backgroundColor: color.surface1,
             }}
           >
-            #
-          </div>
-          <div
-            className="col-span-9 md:col-start-2 md:col-span-2"
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "10px",
-              letterSpacing: "0.08em",
-              color: color.textMuted,
-              textTransform: "uppercase",
-            }}
-          >
-            Property
-          </div>
-          {COLUMNS.map((c, ci) => (
             <div
-              key={c}
-              className={`col-span-6 ${
-                ci === 0
-                  ? "md:col-start-4 md:col-span-2"
-                  : ci === 1
-                  ? "md:col-start-6 md:col-span-2"
-                  : ci === 2
-                  ? "md:col-start-8 md:col-span-2"
-                  : "md:col-start-10 md:col-span-2"
-              }`}
+              className="col-span-3 md:col-start-1 md:col-span-1 pl-2 md:pl-3"
               style={{
                 fontFamily: "var(--font-mono)",
-                fontSize: "11px",
-                letterSpacing: "0.06em",
-                color: c === "Orbital" ? colors.purple.hex : color.textSecondary,
+                fontSize: "10px",
+                letterSpacing: "0.08em",
+                color: color.textMuted,
                 textTransform: "uppercase",
               }}
             >
-              {c}
+              #
             </div>
-          ))}
-        </div>
-
-        <div className="col-span-12">
-          {ROWS.map((row, ri) => (
             <div
-              key={row.property}
-              className="grid grid-cols-12 gap-5 py-3"
+              className="col-span-9 md:col-start-2 md:col-span-3"
               style={{
-                borderBottom:
-                  ri < ROWS.length - 1 ? `1px dashed ${color.borderSubtle}` : "none",
+                fontFamily: "var(--font-mono)",
+                fontSize: "10px",
+                letterSpacing: "0.08em",
+                color: color.textMuted,
+                textTransform: "uppercase",
               }}
             >
+              Property
+            </div>
+            {COLUMNS.map((c, ci) => (
               <div
-                className="col-span-3 md:col-start-1 md:col-span-1 pl-2 md:pl-3"
+                key={c}
+                className={`col-span-6 ${
+                  ci === 0
+                    ? "md:col-start-5 md:col-span-2"
+                    : ci === 1
+                    ? "md:col-start-7 md:col-span-2"
+                    : ci === 2
+                    ? "md:col-start-9 md:col-span-2"
+                    : "md:col-start-11 md:col-span-2"
+                }`}
                 style={{
                   fontFamily: "var(--font-mono)",
                   fontSize: "11px",
-                  color: color.textMuted,
                   letterSpacing: "0.06em",
+                  color: c === "Orbital" ? colors.purple.hex : color.textSecondary,
+                  textTransform: "uppercase",
                 }}
               >
-                {String(ri + 1).padStart(2, "0")}
+                {c}
               </div>
-              <div
-                className="col-span-9 md:col-start-2 md:col-span-2"
-                style={{
-                  fontFamily: typography.p2.family,
-                  fontSize: typography.p2.size,
-                  color: color.textSecondary,
-                }}
-              >
-                {row.property}
-              </div>
+            ))}
+          </div>
 
-              {row.values.map((v, vi) => (
+          <div className="col-span-12">
+            {ROWS.map((row, ri) => (
+              <div
+                key={row.property}
+                className="grid grid-cols-12 gap-5 py-3"
+                style={{
+                  borderBottom:
+                    ri < ROWS.length - 1 ? `1px dashed ${color.borderSubtle}` : "none",
+                }}
+              >
                 <div
-                  key={vi}
-                  className={`col-span-6 ${
-                    vi === 0
-                      ? "md:col-start-4 md:col-span-2"
-                      : vi === 1
-                      ? "md:col-start-6 md:col-span-2"
-                      : vi === 2
-                      ? "md:col-start-8 md:col-span-2"
-                      : "md:col-start-10 md:col-span-2"
-                  }`}
+                  className="col-span-3 md:col-start-1 md:col-span-1 pl-2 md:pl-3"
                   style={{
-                    fontFamily: vi === 3 ? "var(--font-mono)" : typography.p2.family,
-                    fontSize: typography.p2.size,
-                    color:
-                      vi === 3
-                        ? colors.purple.hex
-                        : row.highlights?.[vi]
-                        ? color.textPrimary
-                        : color.textMuted,
-                    letterSpacing: vi === 3 ? "0.02em" : typography.p2.letterSpacing,
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "11px",
+                    color: color.textMuted,
+                    letterSpacing: "0.06em",
                   }}
                 >
-                  {v}
+                  {String(ri + 1).padStart(2, "0")}
                 </div>
-              ))}
-            </div>
-          ))}
+                <div
+                  className="col-span-9 md:col-start-2 md:col-span-3"
+                  style={{
+                    fontFamily: typography.p2.family,
+                    fontSize: typography.p2.size,
+                    color: color.textSecondary,
+                  }}
+                >
+                  {row.property}
+                </div>
+
+                {row.values.map((v, vi) => (
+                  <div
+                    key={vi}
+                    className={`col-span-6 ${
+                      vi === 0
+                        ? "md:col-start-5 md:col-span-2"
+                        : vi === 1
+                        ? "md:col-start-7 md:col-span-2"
+                        : vi === 2
+                        ? "md:col-start-9 md:col-span-2"
+                        : "md:col-start-11 md:col-span-2"
+                    }`}
+                    style={{
+                      fontFamily: vi === 3 ? "var(--font-mono)" : typography.p2.family,
+                      fontSize: typography.p2.size,
+                      color:
+                        vi === 3
+                          ? colors.purple.hex
+                          : row.highlights?.[vi]
+                          ? color.textPrimary
+                          : color.textMuted,
+                      letterSpacing: vi === 3 ? "0.02em" : typography.p2.letterSpacing,
+                    }}
+                  >
+                    {v}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </SectionFrame>
+    </section>
   );
 }

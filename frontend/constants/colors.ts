@@ -92,11 +92,11 @@ export const themePalettes: Record<ThemeName, ThemePalette> = {
     surface2: "#F7F7F7",
     surface3: "#E6E6E6",
     surface4: "#D0D0D0",
-    border: "#D0D0D0",
+    border: "#E7E7E7",
     borderSubtle: "#E0E0E0",
-    textPrimary: "#101010",
+    textPrimary: "#010101",
     textSecondary: "#303030",
-    textMuted: "#606060",
+    textMuted: "#797979",
   },
 };
 
