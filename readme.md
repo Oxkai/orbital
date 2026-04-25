@@ -9,7 +9,7 @@ $$\|\mathbf{r} - \mathbf{x}\|^2 = \sum_{i=1}^{n}(r - x_i)^2 = r^2$$
 where $x_i$ is the pool's reserve of asset $i$. Tick boundaries are orbits around the equal $1 price point. Each tick has two states: interior (near peg, actively earning fees) and boundary (one asset depegged, removed from that tick while others keep trading). All ticks collapse to a single toroid equation, keeping swap computation constant-time on-chain regardless of how many assets are listed.
 
 - ~150× capital efficiency at tight peg (n=5, p=0.99)
-- Depeg isolation — one asset going to zero does not affect pricing of the rest
+- One asset going to zero does not affect pricing of the rest
 - Near-zero slippage — ~1/154th the price impact of a flat AMM at p=0.99
 - Per-LP tick selection — each LP independently sets their depeg tolerance, from narrow (max efficiency) to wide (volatility backstop)
 
@@ -30,7 +30,7 @@ Each folder has its own README with build instructions and detailed documentatio
 
 ## Live Demo
 
-https://orbital.xyz
+https://orbital-xyz.vercel.app
 
 ---
 
