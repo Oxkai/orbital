@@ -5,8 +5,33 @@ import {IOrbitalPoolActions}  from "../interfaces/IOrbitalPoolActions.sol";
 import {IOrbitalSwapCallback} from "../interfaces/IOrbitalSwapCallback.sol";
 import {IOrbitalPool}         from "../interfaces/IOrbitalPool.sol";
 import {IERC20Minimal}        from "../interfaces/IERC20Minimal.sol";
+import {TickLib}              from "../lib/TickLib.sol";
 
 contract OrbitalQuoter is IOrbitalSwapCallback {
+
+    // ─── Tick math helpers ────────────────────────────────────────────────────
+
+    /// @notice Returns the valid [kMin, kMax] range for a given liquidity (r) and asset count (n).
+    function kBounds(uint256 r, uint256 n)
+        external
+        pure
+        returns (uint256 kMinVal, uint256 kMaxVal)
+    {
+        kMinVal = TickLib.kMin(r, n);
+        kMaxVal = TickLib.kMax(r, n);
+    }
+
+    /// @notice Converts a depeg price to its corresponding k value.
+    /// @param r    Liquidity radius, WAD-scaled (1e18 = 1.0).
+    /// @param n    Number of assets in the pool.
+    /// @param pWad Depeg price, WAD-scaled (e.g. 0.97e18 = $0.97).
+    function kForDepegPrice(uint256 r, uint256 n, uint256 pWad)
+        external
+        pure
+        returns (uint256 k)
+    {
+        k = TickLib.kFromDepegPrice(r, n, pWad);
+    }
 
     function quoteExactInput(
         address pool,

@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
-import { Roboto, Geist_Mono } from "next/font/google";
+import { Roboto, Geist_Mono, Geist } from "next/font/google";
 import "./globals.css";
 import LayoutGrid from "@/components/layout/LayoutGrid";
 import { getThemeCssVariables } from "@/constants";
+import { Web3Provider } from "@/components/providers/Web3Provider";
+import { cn } from "@/lib/utils";
 
-const roboto = Roboto({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
-});
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const geistMono = Geist_Mono({
   variable: "--font-mono",
@@ -29,15 +27,17 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${roboto.variable} ${geistMono.variable} h-full antialiased`}
+      className={cn("h-full", "antialiased", geistMono.variable, "font-sans", geist.variable)}
       data-layout-grid="hidden"
       style={getThemeCssVariables("dark")}
     >
       <body
         className="min-h-full flex flex-col"
       >
-        {children}
-         {process.env.NODE_ENV === "development" && <LayoutGrid />}
+        <Web3Provider>
+          {children}
+        </Web3Provider>
+        {process.env.NODE_ENV === "development" && <LayoutGrid />}
       </body>
     </html>
   );
