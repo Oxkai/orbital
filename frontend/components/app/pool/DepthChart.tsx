@@ -54,7 +54,7 @@ export function DepthChart({ ticks, n, rInt, kBound, sumX }: Props) {
 
   // Per-tick info
   const tickInfos = ticks.map((t) => {
-    const kNorm    = t.r > 0 ? Number(t.kWad) / 1e18 / t.r : 0;
+    const kNorm    = t.r > 0 ? (Number(t.kWad) / 1e18) / t.r : 0;
     const depegNum = kNormToDepegNum(n, kNorm);
     return {
       r:          t.r,
@@ -64,26 +64,36 @@ export function DepthChart({ ticks, n, rInt, kBound, sumX }: Props) {
     };
   });
 
-  const sorted  = [...tickInfos].sort((a, b) => b.depeg - a.depeg);
-  const totalR  = tickInfos.reduce((s, t) => s + t.r, 0);
+  // Only valid ticks (depeg > 0.5) — filter degenerate seed ticks with kNorm > kSingleMax
+  const validTicks = tickInfos.filter(t => t.depeg > 0.5);
+  const sorted     = [...validTicks].sort((a, b) => b.depeg - a.depeg);
+  const totalR     = validTicks.reduce((s, t) => s + t.r, 0);
 
-  // Build step-curve data points [x=depegPrice, y=liquidityAtThatPrice]
+  // x-axis: zoom to where liquidity lives
+  const minDepeg = validTicks.length > 0 ? Math.min(...validTicks.map(t => t.depeg)) : 0.98;
+  const spread   = 1 - minDepeg;
+  const xMin     = parseFloat(Math.max(0, minDepeg - spread * 2).toFixed(4));
+  const xMax     = 1.001;
+  const step     = parseFloat(((xMax - xMin) / 5).toFixed(4));
+  const xTicks   = Array.from({ length: 6 }, (_, i) => parseFloat((xMin + i * step).toFixed(4)));
+
+  // Build step-curve — only between xMin and xMax
   const pts: { x: number; y: number }[] = [];
   let cumY = totalR;
-  pts.push({ x: 1.0, y: cumY });
+  pts.push({ x: xMax, y: cumY });
   for (const t of sorted) {
     pts.push({ x: t.depeg, y: cumY });
     cumY -= t.r;
     pts.push({ x: t.depeg, y: Math.max(0, cumY) });
   }
-  pts.push({ x: 0.0, y: Math.max(0, cumY) });
+  pts.push({ x: xMin, y: Math.max(0, cumY) });
 
   // αNorm needle position
   const sumXf     = Number(sumX) / 1e18;
   const kBoundf   = kBound / 1e18;
   const alphaNorm = rInt > 0
-    ? Math.min(1, Math.max(0, (sumXf / Math.sqrt(n) - kBoundf) / rInt))
-    : 1;
+    ? Math.min(xMax, Math.max(xMin, (sumXf / Math.sqrt(n) - kBoundf) / rInt))
+    : xMax;
 
   const yMax = totalR * 1.18;
 
@@ -129,9 +139,9 @@ export function DepthChart({ ticks, n, rInt, kBound, sumX }: Props) {
             <XAxis
               dataKey="x"
               type="number"
-              domain={[0, 1]}
-              ticks={[0, 0.25, 0.5, 0.75, 1]}
-              tickFormatter={(v: number) => `$${v.toFixed(2)}`}
+              domain={[xMin, xMax]}
+              ticks={xTicks}
+              tickFormatter={(v: number) => `$${v.toFixed(4)}`}
               tick={TICK_STYLE}
               axisLine={{ stroke: color.border, strokeWidth: 0.75 }}
               tickLine={false}

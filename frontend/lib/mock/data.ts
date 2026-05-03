@@ -65,9 +65,9 @@ export function fmtAmount(n: number, dp = 4): string {
   return n.toFixed(dp);
 }
 
-export function fmtUSD(n: number): string {
-  if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
-  if (n >= 1_000)     return "$" + (n / 1_000).toFixed(1) + "K";
+export function fmtUSD(n: number, precise = false): string {
+  if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(precise ? 4 : 2) + "M";
+  if (n >= 1_000)     return "$" + (n / 1_000).toFixed(precise ? 3 : 1) + "K";
   return "$" + n.toFixed(2);
 }
 

@@ -1,6 +1,8 @@
-import { createConfig, http } from "wagmi";
+import { createConfig, http, fallback } from "wagmi";
 import { baseSepolia } from "wagmi/chains";
 import { injected, coinbaseWallet } from "wagmi/connectors";
+
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL;
 
 export const wagmiConfig = createConfig({
   chains: [baseSepolia],
@@ -9,7 +11,11 @@ export const wagmiConfig = createConfig({
     coinbaseWallet({ appName: "Orbital" }),
   ],
   transports: {
-    [baseSepolia.id]: http(),
+    // Use configured RPC first; fall back to the public endpoint so the app
+    // still works without an env var (useful for local dev / demos)
+    [baseSepolia.id]: RPC_URL
+      ? fallback([http(RPC_URL), http()])
+      : http(),
   },
 });
 

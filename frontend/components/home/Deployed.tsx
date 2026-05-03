@@ -1,5 +1,9 @@
 import { color, colors, typography } from "@/constants";
 import { SectionLabel } from "./SectionLabel";
+import {
+  FACTORY_ADDRESS, POOL_ADDRESS, ROUTER_ADDRESS, PM_ADDRESS, QUOTER_ADDRESS,
+  TOKEN_ADDRESSES,
+} from "@/lib/contracts";
 
 type Contract = { name: string; address: string };
 
@@ -8,27 +12,28 @@ const GROUPS: { kind: string; label: string; items: Contract[] }[] = [
     kind: "CORE",
     label: "Core protocol",
     items: [
-      { name: "Factory", address: "0x7e1B4FE6170AccA1789e249eAB3D247182D30B44" },
-      { name: "Pool (4-asset, 0.3%)", address: "0x79E516819DC8c06D79615A2f2F1914c646649369" },
+      { name: "Factory",               address: FACTORY_ADDRESS },
+      { name: "Pool (4-asset, 0.05%)", address: POOL_ADDRESS },
     ],
   },
   {
     kind: "PERIPHERY",
     label: "Periphery",
     items: [
-      { name: "Router", address: "0x60CEC0218b501Cf4E045CbDbA3eF021374e1aFAc" },
-      { name: "PositionManager", address: "0x08AC49be269F1c6C2821D56c4C729C9843152EE3" },
-      { name: "Quoter", address: "0x713cd4D1a453705fa31D81A89817174d1c37d489" },
+      { name: "Router",          address: ROUTER_ADDRESS },
+      { name: "PositionManager", address: PM_ADDRESS     },
+      { name: "Quoter",          address: QUOTER_ADDRESS },
     ],
   },
   {
     kind: "TEST TOKENS",
     label: "Test tokens",
     items: [
-      { name: "MockUSDC", address: "0x44406ad771b05827F5fd95b002189e51EEbEDC91" },
-      { name: "MockUSDT", address: "0x168DEB69184ea184AadB8a626DC4d3013dc08Fe8" },
-      { name: "MockDAI", address: "0x60Cb112631Ce92f9fe164878d690FAc1FD1C295d" },
-      { name: "MockFRAX", address: "0x39855B7DE333de50A7b2e97a3A3E2Ec1CF0411a9" },
+      { name: "MockUSDC",   address: TOKEN_ADDRESSES.USDC   },
+      { name: "MockUSDT",   address: TOKEN_ADDRESSES.USDT   },
+      { name: "MockDAI",    address: TOKEN_ADDRESSES.DAI    },
+      { name: "MockFRAX",   address: TOKEN_ADDRESSES.FRAX   },
+      { name: "MockcrvUSD", address: TOKEN_ADDRESSES.crvUSD },
     ],
   },
 ];

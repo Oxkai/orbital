@@ -4,14 +4,16 @@ import { color, typography } from "@/constants";
 import { PoolCard } from "@/components/app/pools/PoolCard";
 import { usePool } from "@/lib/hooks/usePool";
 import { fmtUSD } from "@/lib/mock/data";
-import { POOL_ADDRESS } from "@/lib/contracts";
+import { POOL_ADDRESSES } from "@/lib/contracts";
 
 export default function PoolsPage() {
-  const { pool, isLoading, isError } = usePool(POOL_ADDRESS);
+  const poolHooks = POOL_ADDRESSES.map(addr => usePool(addr)); // eslint-disable-line react-hooks/rules-of-hooks
 
-  const tvl = pool?.tvl ?? 0;
-  const vol = pool?.volume24h ?? 0;
-  const pools = pool ? [pool] : [];
+  const isLoading = poolHooks.some(p => p.isLoading);
+  const isError   = poolHooks.every(p => p.isError);
+  const pools     = poolHooks.map(p => p.pool).filter(Boolean) as NonNullable<ReturnType<typeof usePool>["pool"]>[];
+  const tvl = pools.reduce((a, p) => a + p.tvl, 0);
+  const vol = pools.reduce((a, p) => a + p.volume24h, 0);
 
   return (
     <div
@@ -64,32 +66,24 @@ export default function PoolsPage() {
           {/* Scrollable content */}
           <div className="flex-1 min-h-0 overflow-y-auto">
             {isLoading && (
-              <div
-                style={{
-                  color: color.textMuted,
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "12px",
-                }}
-              >
+              <div className="px-5 py-4"
+                style={{ color: color.textMuted, fontFamily: "var(--font-mono)", fontSize: "12px" }}>
                 Fetching on-chain data…
               </div>
             )}
-            {isError && (
-              <div
-                style={{
-                  color: color.error,
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "12px",
-                }}
-              >
+            {isError && !isLoading && (
+              <div className="px-5 py-4"
+                style={{ color: color.error, fontFamily: "var(--font-mono)", fontSize: "12px" }}>
                 Failed to load pool. Check RPC connection.
               </div>
             )}
-            <div className="flex flex-col gap-4">
-              {pools.map((p) => (
-                <PoolCard key={p.address} pool={p} />
-              ))}
-            </div>
+            {!isLoading && !isError && (
+              <div className="flex flex-col">
+                {pools.map((p) => (
+                  <PoolCard key={p.address} pool={p} />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

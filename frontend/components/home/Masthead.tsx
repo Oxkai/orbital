@@ -85,7 +85,7 @@ export function Masthead() {
           {/* CTA row */}
           <div className="col-span-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[auto_auto] gap-5 mt-12 w-fit">
             <a
-              href="/swap"
+              href="/app/swap"
               className="inline-grid grid-flow-col auto-cols-max items-center gap-3 px-6 py-3 transition-colors hover:opacity-90"
               style={{
                 backgroundColor: color.textPrimary,

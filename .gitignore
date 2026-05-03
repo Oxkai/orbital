@@ -61,3 +61,10 @@ Thumbs.db
 # Claude Code local state
 .claude/
 
+# Personal / working docs — not for public consumption
+form.md
+plan.md
+resume.tex
+frontend/pending.md
+frontend/components.webp
+

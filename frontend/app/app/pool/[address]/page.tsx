@@ -1,17 +1,35 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, use } from "react";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
+import { TokenDAI, TokenUSDT, TokenUSDC, TokenFRAX } from "@token-icons/react";
 import { color, typography } from "@/constants";
 import { TokenPill } from "@/components/app/shared/TokenPill";
+
+const TOKEN_ICON_MAP: Record<string, React.ElementType> = {
+  DAI: TokenDAI, USDT: TokenUSDT, USDC: TokenUSDC, FRAX: TokenFRAX,
+};
+const TOKEN_COLOR_MAP: Record<string, string> = {
+  CRVUSD: "#FF6B35",
+};
+function TokenIcon({ symbol, size = 16 }: { symbol: string; size?: number }) {
+  const Icon = TOKEN_ICON_MAP[symbol.toUpperCase()];
+  if (Icon) return <Icon size={size} variant="branded" />;
+  const bg = TOKEN_COLOR_MAP[symbol.toUpperCase()] ?? "#555";
+  return (
+    <span style={{ width: size, height: size, borderRadius: "50%", backgroundColor: bg, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: Math.max(6, size * 0.38), color: "#fff", fontFamily: "var(--font-mono)", fontWeight: 700, letterSpacing: "-0.02em" }}>
+      {symbol.slice(0, 2).toUpperCase()}
+    </span>
+  );
+}
 import { Badge }     from "@/components/app/shared/Badge";
 import { StatBox }   from "@/components/app/shared/StatBox";
 import { usePool }   from "@/lib/hooks/usePool";
 import { useTransactions, type TxType } from "@/lib/hooks/useTransactions";
 import { DepthChart } from "@/components/app/pool/DepthChart";
 import { fmtUSD }   from "@/lib/mock/data";
-import { POOL_ADDRESS } from "@/lib/contracts";
+import { type Address } from "viem";
 
 const TABS = ["Overview", "Liquidity", "Transactions"] as const;
 type Tab = typeof TABS[number];
@@ -78,7 +96,7 @@ function OverviewTab({ pool }: { pool: NonNullable<ReturnType<typeof usePool>["p
         <div style={{ borderRight: `1px solid ${color.border}`, backgroundColor: color.surface1 }}>
           <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${color.borderSubtle}` }}>
             <span style={lbl()}>Reserve Distribution</span>
-            <span style={mono("10px", color.textMuted)}>TVL {fmtUSD(pool.tvl)}</span>
+            <span style={mono("10px", color.textMuted)}>TVL {fmtUSD(pool.tvl, true)}</span>
           </div>
 
           <div className="px-4 pt-3 pb-1">
@@ -104,10 +122,10 @@ function OverviewTab({ pool }: { pool: NonNullable<ReturnType<typeof usePool>["p
                 <div key={t.address} className="grid items-center px-4 py-2.5"
                   style={{ gridTemplateColumns: "1fr 1fr 1fr auto", borderBottom: `1px solid ${color.borderSubtle}` }}>
                   <div className="flex items-center gap-2">
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: t.color, display: "inline-block", flexShrink: 0 }} />
+                    <TokenIcon symbol={t.symbol} size={16} />
                     <span style={mono("12px", color.textSecondary)}>{t.symbol}</span>
                   </div>
-                  <span style={mono("12px", color.textPrimary)}>{fmtUSD(pool.reserves[i])}</span>
+                  <span style={mono("12px", color.textPrimary)}>{fmtUSD(pool.reserves[i], true)}</span>
                   <span style={mono("11px", color.textMuted)}>{pct.toFixed(1)}%</span>
                   {isDepegged && <Badge variant="warning" dot>depegged</Badge>}
                 </div>
@@ -281,7 +299,7 @@ function TransactionsTab({ pool }: { pool: NonNullable<ReturnType<typeof usePool
         <div key={tx.hash + i} className="grid items-center px-4 py-2.5"
           style={{ gridTemplateColumns: "72px 1fr 1fr 1fr 80px 100px", borderBottom: `1px solid ${color.borderSubtle}` }}>
 
-          <span style={{ ...mono("9px", TYPE_COLOR[tx.type]), backgroundColor: `${TYPE_COLOR[tx.type]}14`, border: `1px solid ${TYPE_COLOR[tx.type]}30`, padding: "2px 7px", letterSpacing: "0.06em", textTransform: "uppercase" as const, display: "inline-block", whiteSpace: "nowrap" as const }}>
+          <span style={{ ...mono("9px", TYPE_COLOR[tx.type]), backgroundColor: `${TYPE_COLOR[tx.type]}14`, padding: "2px 7px", letterSpacing: "0.06em", textTransform: "uppercase" as const, display: "inline-block", whiteSpace: "nowrap" as const }}>
             {tx.type}
           </span>
 
@@ -297,7 +315,8 @@ function TransactionsTab({ pool }: { pool: NonNullable<ReturnType<typeof usePool
             {tx.amountOut || "—"}
           </span>
 
-          <span style={mono("10px", color.textMuted)} title={tx.timestamp ? new Date(tx.timestamp * 1000).toLocaleString() : ""}>
+          <span style={mono("10px", color.textMuted)} title={tx.timestamp ? new Date(tx.timestamp * 1000).toLocaleString() : ""}
+            suppressHydrationWarning>
             {timeAgo(tx.timestamp)}
           </span>
 
@@ -331,9 +350,10 @@ function TransactionsTab({ pool }: { pool: NonNullable<ReturnType<typeof usePool
   );
 }
 
-export default function PoolDetailPage() {
+export default function PoolDetailPage({ params }: { params: Promise<{ address: string }> }) {
+  const { address: poolAddr } = use(params);
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
-  const { pool, isLoading } = usePool(POOL_ADDRESS);
+  const { pool, isLoading } = usePool(poolAddr as Address);
 
   return (
     <div className="flex flex-col overflow-hidden w-full" style={{ height: "calc(100vh - 5.5rem)" }}>
@@ -414,6 +434,12 @@ export default function PoolDetailPage() {
           <div className="flex-1 min-h-0 overflow-y-auto">
             {isLoading && (
               <div className="px-5 py-4" style={mono("12px", color.textMuted)}>Loading pool data…</div>
+            )}
+            {!isLoading && !pool && (
+              <div className="flex flex-col items-center justify-center py-20 gap-3">
+                <span style={mono("13px", color.textMuted)}>Pool not found</span>
+                <span style={mono("11px", color.textMuted)}>{poolAddr}</span>
+              </div>
             )}
             {pool && activeTab === "Overview"      && <OverviewTab      pool={pool} />}
             {pool && activeTab === "Liquidity"     && <LiquidityTab     pool={pool} />}

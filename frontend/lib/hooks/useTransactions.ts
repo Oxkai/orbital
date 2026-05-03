@@ -3,10 +3,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { usePublicClient } from "wagmi";
 import { parseAbiItem, type Address, type AbiEvent } from "viem";
-import { POOL_ADDRESS, TOKEN_META, DEPLOY_BLOCK } from "@/lib/contracts";
-const CHUNK        = 9_000n;
+import { POOL_ADDRESSES, TOKEN_META, DEPLOY_BLOCK } from "@/lib/contracts";
+const CHUNK        = 2_000n;   // stay within common RPC getLogs limits
 const PAGE_SIZE    = 20;
 const DELAY_MS     = 150;
+const TS_BATCH     = 5;        // max parallel getBlock calls at once
 
 const WAD = 1e18;
 function fmt(raw: bigint) { return (Number(raw) / WAD).toFixed(2); }
@@ -29,16 +30,26 @@ const MINT_EVENT    = parseAbiItem("event Mint(address indexed recipient, uint25
 const BURN_EVENT    = parseAbiItem("event Burn(address indexed owner, uint256 indexed tickIndex, uint256 rWad, uint256[] amounts)") as AbiEvent;
 const COLLECT_EVENT = parseAbiItem("event Collect(address indexed owner, uint256 indexed tickIndex, uint256[] fees)") as AbiEvent;
 
+// Module-level cache so re-renders and pagination don't re-fetch known blocks
+const tsCache = new Map<bigint, number>();
+
 async function fetchTimestamps(
   client: ReturnType<typeof usePublicClient>,
   blockNumbers: bigint[],
 ): Promise<Map<bigint, number>> {
-  const unique = [...new Set(blockNumbers)];
-  const results = await Promise.all(
-    unique.map(n => client!.getBlock({ blockNumber: n, includeTransactions: false }))
-  );
+  const unique  = [...new Set(blockNumbers)].filter(n => !tsCache.has(n));
+
+  // Fetch in small sequential batches to avoid hammering the RPC
+  for (let i = 0; i < unique.length; i += TS_BATCH) {
+    const batch = unique.slice(i, i + TS_BATCH);
+    const results = await Promise.all(
+      batch.map(n => client!.getBlock({ blockNumber: n, includeTransactions: false }))
+    );
+    results.forEach(b => { if (b.timestamp) tsCache.set(b.number!, Number(b.timestamp)); });
+  }
+
   const map = new Map<bigint, number>();
-  results.forEach(b => { if (b.timestamp) map.set(b.number!, Number(b.timestamp)); });
+  blockNumbers.forEach(n => { const t = tsCache.get(n); if (t) map.set(n, t); });
   return map;
 }
 
@@ -49,12 +60,14 @@ async function fetchChunk(
   to: bigint,
   tokenSym: (i: number) => string,
 ): Promise<Omit<TxRecord, "timestamp">[]> {
+  // Fetch from all known pools in parallel, then flatten
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const poolAddrs = POOL_ADDRESSES as unknown as Address[];
   const [s, m, b, c]: any[][] = await Promise.all([
-    client!.getLogs({ address: POOL_ADDRESS, event: SWAP_EVENT,    fromBlock: from, toBlock: to }),
-    client!.getLogs({ address: POOL_ADDRESS, event: MINT_EVENT,    fromBlock: from, toBlock: to }),
-    client!.getLogs({ address: POOL_ADDRESS, event: BURN_EVENT,    fromBlock: from, toBlock: to }),
-    client!.getLogs({ address: POOL_ADDRESS, event: COLLECT_EVENT, fromBlock: from, toBlock: to }),
+    Promise.all(poolAddrs.map(a => client!.getLogs({ address: a, event: SWAP_EVENT,    fromBlock: from, toBlock: to }))).then(r => r.flat()),
+    Promise.all(poolAddrs.map(a => client!.getLogs({ address: a, event: MINT_EVENT,    fromBlock: from, toBlock: to }))).then(r => r.flat()),
+    Promise.all(poolAddrs.map(a => client!.getLogs({ address: a, event: BURN_EVENT,    fromBlock: from, toBlock: to }))).then(r => r.flat()),
+    Promise.all(poolAddrs.map(a => client!.getLogs({ address: a, event: COLLECT_EVENT, fromBlock: from, toBlock: to }))).then(r => r.flat()),
   ]);
 
   const records: Omit<TxRecord, "timestamp">[] = [];
@@ -109,7 +122,7 @@ export function useTransactions(poolTokens: { symbol: string; address: string }[
     while (accumulated.length < limit && to >= DEPLOY_BLOCK) {
       const from = to - CHUNK + 1n < DEPLOY_BLOCK ? DEPLOY_BLOCK : to - CHUNK + 1n;
       const chunk = await fetchChunk(client!, from, to, tokenSym);
-      accumulated.unshift(...chunk); // prepend so latest-first after reverse
+      accumulated.push(...chunk);
       to = from - 1n;
       if (from === DEPLOY_BLOCK) break;
       if (accumulated.length < limit) await sleep(DELAY_MS);
@@ -126,7 +139,7 @@ export function useTransactions(poolTokens: { symbol: string; address: string }[
     return { records: withTs, nextCursor: to >= DEPLOY_BLOCK ? to : null };
   }, [client, tokenSym]);
 
-  // Initial load
+  // Initial load + periodic refresh
   useEffect(() => {
     if (!client || poolTokens.length === 0) return;
     let cancelled = false;
@@ -148,8 +161,23 @@ export function useTransactions(poolTokens: { symbol: string; address: string }[
       }
     }
 
+    async function poll() {
+      if (cancelled) return;
+      try {
+        const latest = await client!.getBlockNumber();
+        const { records, nextCursor } = await scanBack(latest, PAGE_SIZE);
+        if (cancelled) return;
+        setTxs(records);
+        cursorRef.current = nextCursor;
+        setHasMore(nextCursor !== null);
+      } catch {
+        // silently ignore poll errors
+      }
+    }
+
     init();
-    return () => { cancelled = true; };
+    const interval = setInterval(poll, 15_000);
+    return () => { cancelled = true; clearInterval(interval); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, poolTokens.length]);
 
@@ -169,5 +197,18 @@ export function useTransactions(poolTokens: { symbol: string; address: string }[
     }
   }, [isLoadingMore, hasMore, scanBack]);
 
-  return { txs, isLoading, isLoadingMore, hasMore, loadMore, error };
+  const refetch = useCallback(async () => {
+    if (!client || poolTokens.length === 0) return;
+    try {
+      const latest = await client.getBlockNumber();
+      const { records, nextCursor } = await scanBack(latest, PAGE_SIZE);
+      setTxs(records);
+      cursorRef.current = nextCursor;
+      setHasMore(nextCursor !== null);
+    } catch {
+      // silently ignore
+    }
+  }, [client, poolTokens.length, scanBack]);
+
+  return { txs, isLoading, isLoadingMore, hasMore, loadMore, error, refetch };
 }

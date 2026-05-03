@@ -34,14 +34,10 @@ export function AppNav() {
   return (
     <nav
       className="sticky top-0 z-40 flex items-center h-10 px-5 m-4 gap-6 backdrop-blur-md"
-      style={{
-        
-        backgroundColor: color.surface1,
-      }}
+      style={{ backgroundColor: color.surface1 }}
     >
       {/* Logo */}
       <Link href="/" className="flex items-center gap-2 shrink-0 mr-2">
-       
         <span
           style={{
             fontFamily: typography.p2.family,
@@ -85,8 +81,6 @@ export function AppNav() {
 
       {/* Right — network badge + wallet */}
       <div className="flex items-center gap-2 shrink-0">
-       
-
         {showConnectedWallet ? (
           <button
             onClick={() => disconnect()}
@@ -108,9 +102,9 @@ export function AppNav() {
             onClick={() => connect({ connector: injected() })}
             disabled={isPending}
             style={{
-              
               backgroundColor: color.textPrimary,
-              color: isPending ? color.bg : color.bg,
+              color: color.bg,
+              opacity: isPending ? 0.6 : 1,
               fontFamily: typography.p2.family,
               fontSize: typography.p2.size,
               letterSpacing: "-0.01em",

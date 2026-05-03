@@ -4,6 +4,7 @@ import { useReadContracts } from "wagmi";
 import { type Address } from "viem";
 import { POOL_ABI, TOKEN_META } from "@/lib/contracts";
 import { type Pool } from "@/lib/mock/data";
+import { useVolume24h } from "@/lib/hooks/useVolume24h";
 
 const WAD = 1e18;
 
@@ -70,6 +71,8 @@ export function usePool(poolAddress: Address) {
   const rInt   = Number(slot0?.[2] ?? 0n) / WAD;
   const sumX   = slot0?.[0] ?? 0n;
 
+  const { volume24h, fees24h } = useVolume24h(fee);
+
   const pool: Pool | null = ready && step2.data ? {
     address:             poolAddress,
     name:                tokens.map(t => t.symbol).join(" / "),
@@ -79,11 +82,18 @@ export function usePool(poolAddress: Address) {
     reserves,
     ticks,
     tvl,
-    volume24h:           0,
-    fees24h:             0,
+    volume24h,
+    fees24h,
     kBound,
     sumX,
-    depeggedTokenIndices: kBound > 0 ? [] : [],  // can't determine which tokens without extra reads
+    depeggedTokenIndices: (() => {
+      if (kBound === 0 || reserves.length === 0) return [];
+      const mean = reserves.reduce((a, b) => a + b, 0) / reserves.length;
+      // A token is depegged if its reserve has dropped to less than 10% of the mean
+      return reserves
+        .map((r, i) => (mean > 0 && r < mean * 0.1 ? i : -1))
+        .filter(i => i >= 0);
+    })(),
   } : null;
 
   return {

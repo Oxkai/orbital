@@ -13,6 +13,7 @@ export function PoolCard({ pool }: PoolCardProps) {
   const boundaryCount = pool.ticks.filter(t => !t.isInterior).length;
   const healthVariant = boundaryCount === 0 ? "success" : boundaryCount <= 1 ? "warning" : "error";
   const healthLabel   = boundaryCount === 0 ? "All pegged" : `${boundaryCount} depegged`;
+  const totalReserves = pool.reserves.reduce((a, b) => a + b, 0);
 
   return (
     <div
@@ -80,8 +81,7 @@ export function PoolCard({ pool }: PoolCardProps) {
         </div>
         <div className="flex h-1.5 gap-px overflow-hidden">
           {pool.tokens.map((t, i) => {
-            const total = pool.reserves.reduce((a, b) => a + b, 0);
-            const pct   = (pool.reserves[i] / total) * 100;
+            const pct = totalReserves > 0 ? (pool.reserves[i] / totalReserves) * 100 : 0;
             return (
               <div
                 key={t.address}
@@ -96,8 +96,7 @@ export function PoolCard({ pool }: PoolCardProps) {
         </div>
         <div className="flex gap-4 mt-2 flex-wrap">
           {pool.tokens.map((t, i) => {
-            const total = pool.reserves.reduce((a, b) => a + b, 0);
-            const pct   = ((pool.reserves[i] / total) * 100).toFixed(1);
+            const pct = (totalReserves > 0 ? (pool.reserves[i] / totalReserves) * 100 : 0).toFixed(1);
             return (
               <span
                 key={t.address}

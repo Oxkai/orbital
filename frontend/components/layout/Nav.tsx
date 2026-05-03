@@ -39,18 +39,17 @@ export function Nav() {
     >
       <div className="col-span-4 grid items-center">
         <Link href="/" className="inline-grid grid-flow-col auto-cols-max items-center gap-2">
-          <div className="w-4 h-4 rounded-full border" style={{ borderColor: color.textPrimary }} />
-          <span
-            style={{
-              fontFamily: typography.p1.family,
-              fontSize: "15px",
-              fontWeight: 500,
-              letterSpacing: "-0.02em",
-              color: color.textPrimary,
-            }}
-          >
-            ORBITAL
-          </span>
+        <span
+          style={{
+            fontFamily: typography.p2.family,
+            fontSize: "14px",
+            fontWeight: 500,
+            letterSpacing: "0.1em",
+            color: color.textPrimary,
+          }}
+        >
+          ORBITAL
+        </span>
         </Link>
       </div>
 
@@ -71,16 +70,15 @@ export function Nav() {
             : <Moon size={16} strokeWidth={1.8} aria-hidden="true" />}
         </button>
 
-        <button
-          disabled
+        <Link
+          href="/app/swap"
           style={{
             border: `1px solid ${color.border}`,
-            color: color.textMuted,
+            color: color.textPrimary,
             fontFamily: typography.p2.family,
             fontSize: typography.p2.size,
             letterSpacing: typography.p2.letterSpacing,
             background: "none",
-            cursor: "not-allowed",
             padding: "6px 16px",
             display: "flex",
             alignItems: "center",
@@ -88,20 +86,8 @@ export function Nav() {
           }}
         >
           Launch App
-          <span
-            style={{
-              fontSize: "9px",
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: "#F5AC37",
-              border: "1px solid #F5AC3766",
-              padding: "1px 5px",
-              lineHeight: "14px",
-            }}
-          >
-            Soon
-          </span>
-        </button>
+          <span aria-hidden>→</span>
+        </Link>
       </div>
     </nav>
   );

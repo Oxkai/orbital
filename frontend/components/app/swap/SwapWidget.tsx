@@ -2,14 +2,37 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Settings, ArrowDown, ArrowUpDown, ChevronDown, ChevronUp, X, Check } from "lucide-react";
-import { useAccount, useWriteContract, useSimulateContract } from "wagmi";
+import { TokenDAI, TokenUSDT, TokenUSDC, TokenFRAX } from "@token-icons/react";
+import { useAccount, useWriteContract, useSimulateContract, useWaitForTransactionReceipt } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { useConnect } from "wagmi";
-import { type Address, maxUint256 } from "viem";
+import { type Address, type Hash, maxUint256 } from "viem";
 import { color, typography, typeStyle } from "@/constants";
 import { usePool } from "@/lib/hooks/usePool";
 import { useTokenBalances, useTokenAllowances } from "@/lib/hooks/useTokenBalances";
 import { POOL_ADDRESS, QUOTER_ADDRESS, ROUTER_ADDRESS, ERC20_ABI, ROUTER_ABI, QUOTER_ABI } from "@/lib/contracts";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const TOKEN_ICON_MAP: Record<string, React.ComponentType<any>> = {
+  DAI:  TokenDAI,
+  USDT: TokenUSDT,
+  USDC: TokenUSDC,
+  FRAX: TokenFRAX,
+};
+const TOKEN_COLOR_MAP: Record<string, string> = {
+  CRVUSD: "#FF6B35",
+};
+
+function TokenIcon({ symbol, size = 20 }: { symbol: string; size?: number }) {
+  const Icon = TOKEN_ICON_MAP[symbol.toUpperCase()];
+  if (Icon) return <Icon size={size} variant="branded" />;
+  const bg = TOKEN_COLOR_MAP[symbol.toUpperCase()] ?? "#555";
+  return (
+    <span style={{ width: size, height: size, borderRadius: "50%", backgroundColor: bg, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: Math.max(6, size * 0.38), color: "#fff", fontFamily: "var(--font-mono)", fontWeight: 700 }}>
+      {symbol.slice(0, 2).toUpperCase()}
+    </span>
+  );
+}
 
 function fmtBalance(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + "M";
@@ -45,7 +68,7 @@ function TokenDropdown({ tokens, selected, excluded, onSelect, onClose }: Dropdo
         <button key={token.address} onClick={() => { onSelect(idx); onClose(); }}
           className="w-full flex items-center gap-3 px-4 py-3 transition-colors"
           style={{ backgroundColor: idx === selected ? color.surface3 : "transparent" }}>
-          <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: token.color, flexShrink: 0 }} />
+          <TokenIcon symbol={token.symbol} size={18} />
           <div className="flex-1 flex flex-col items-start">
             <span style={{ ...typeStyle("p2"), fontWeight: 500, color: color.textPrimary }}>{token.symbol}</span>
           </div>
@@ -110,7 +133,7 @@ function TokenBox({ mode, token, otherIdx, tokenIdx, tokens, value, onChange, on
         <div className="relative shrink-0">
           <button onClick={() => setOpen(v => !v)} className="flex items-center gap-2 px-3 py-2"
             style={{ border: `1px solid ${color.border}`, backgroundColor: open ? color.surface3 : color.surface1, transition: "background-color 0.1s" }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: token.color, flexShrink: 0 }} />
+            <TokenIcon symbol={token.symbol} size={18} />
             <span style={{ ...typeStyle("p2"), fontWeight: 500, color: color.textPrimary }}>{token.symbol}</span>
             <ChevronDown size={12} color={color.textMuted} style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
           </button>
@@ -142,7 +165,7 @@ function SettingsPanel({ slippage, setSlippage, deadline, setDeadline, onClose }
   onClose: () => void;
 }) {
   return (
-    <div className="p-4" style={{ backgroundColor: color.surface2, borderBottom: `1px solid ${color.borderSubtle}` }}>
+    <div className="p-4" style={{ backgroundColor: color.surface1 }}>
       <div className="flex items-center justify-between mb-4">
         <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "0.08em", textTransform: "uppercase" as const, color: color.textMuted }}>Settings</span>
         <button onClick={onClose}><X size={13} color={color.textMuted} /></button>
@@ -195,7 +218,7 @@ function SwapInfoPanel({ tokenIn, tokenOut, tokens, numIn, amountOut, slippage, 
     : `1 ${inSym} = — ${outSym}`;
 
   return (
-    <div style={{ borderTop: `1px solid ${color.borderSubtle}` }}>
+    <div>
       <button onClick={() => setExpanded(v => !v)} className="w-full flex items-center justify-between px-4 py-3">
         <span style={{ ...typeStyle("p3"), color: color.textSecondary }}>{rateStr}</span>
         <div className="flex items-center gap-2">
@@ -238,17 +261,40 @@ export function SwapWidget() {
   const [showSettings, setShowSettings] = useState(false);
   const [deadline,     setDeadline]     = useState(10);
   const [slippage,     setSlippage]     = useState(0.5);
+  const [swapResult,   setSwapResult]   = useState<{ success: boolean; hash?: string; msg: string } | null>(null);
+  const [pendingHash,  setPendingHash]  = useState<Hash | undefined>(undefined);
+  const resultTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { address, isConnected } = useAccount();
   const { connect }              = useConnect();
   const { writeContract, isPending } = useWriteContract();
 
-  const { pool } = usePool(POOL_ADDRESS);
+  function showResult(result: { success: boolean; hash?: string; msg: string }) {
+    if (resultTimer.current) clearTimeout(resultTimer.current);
+    setSwapResult(result);
+    resultTimer.current = setTimeout(() => setSwapResult(null), 5000);
+  }
+
+  const { pool, refetch: refetchPool } = usePool(POOL_ADDRESS);
   const tokens   = pool?.tokens ?? [];
   const tokenAddrs = tokens.map(t => t.address as Address);
 
   const { balances, refetch: refetchBalances } = useTokenBalances(tokenAddrs, address);
   const { allowances, refetch: refetchAllowances } = useTokenAllowances(tokenAddrs, address, ROUTER_ADDRESS);
+
+  const { isSuccess: txConfirmed } = useWaitForTransactionReceipt({
+    hash: pendingHash,
+    query: { enabled: !!pendingHash },
+  });
+
+  useEffect(() => {
+    if (!txConfirmed) return;
+    setPendingHash(undefined);
+    refetchPool();
+    refetchBalances();
+    refetchAllowances();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [txConfirmed]);
 
   const tokensWithBalance = tokens.map((t, i) => ({ ...t, balance: balances[i] ?? 0 }));
 
@@ -275,7 +321,6 @@ export function SwapWidget() {
     : false;
 
   const boundaryCount = pool?.kBound ? 1 : 0;
-  const healthLabel   = boundaryCount === 0 ? "All pegged" : "Boundary tick";
 
   const flip = useCallback(() => {
     const prev = amountOut;
@@ -291,17 +336,25 @@ export function SwapWidget() {
     if (!address) return;
     writeContract(
       { address: tokenAddrs[tokenIn], abi: ERC20_ABI, functionName: "approve", args: [ROUTER_ADDRESS, maxUint256] },
-      { onSuccess: () => refetchAllowances() }
+      {
+        onSuccess: (hash) => {
+          refetchAllowances();
+          showResult({ success: true, hash, msg: `${tokensWithBalance[tokenIn]?.symbol ?? "Token"} approved` });
+        },
+        onError: (e) => showResult({ success: false, msg: e.message.split("\n")[0] }),
+      }
     );
   }
 
   function handleSwap() {
     if (!address || !pool) return;
-    const amtIn    = amtInBig;
-    const amtMin   = amountOut > 0
+    const inSym  = tokensWithBalance[tokenIn]?.symbol  ?? "";
+    const outSym = tokensWithBalance[tokenOut]?.symbol ?? "";
+    const amtIn  = amtInBig;
+    const amtMin = amountOut > 0
       ? BigInt(Math.floor(amountOut * (1 - slippage / 100) * 1e18))
       : 0n;
-    const dl       = BigInt(Math.floor(Date.now() / 1000) + deadline * 60);
+    const dl     = BigInt(Math.floor(Date.now() / 1000) + deadline * 60);
     writeContract(
       {
         address: ROUTER_ADDRESS,
@@ -317,7 +370,14 @@ export function SwapWidget() {
           deadline:     dl,
         }],
       },
-      { onSuccess: () => { setAmountIn(""); refetchBalances(); } }
+      {
+        onSuccess: (hash) => {
+          setAmountIn("");
+          setPendingHash(hash);
+          showResult({ success: true, hash, msg: `Swapped ${numIn.toFixed(4)} ${inSym} → ${amountOut.toFixed(4)} ${outSym}` });
+        },
+        onError: (e) => showResult({ success: false, msg: e.message.split("\n")[0] }),
+      }
     );
   }
 
@@ -342,36 +402,35 @@ export function SwapWidget() {
   }
 
   return (
-    <div className="flex flex-col h-full border"  style={{ border: `1px solid ${color.border}`,backgroundColor: color.surface1, width: "100%" }}>
-      {/* Pool status bar */}
-      <div className="flex items-center justify-between px-4 py-2.5"
-        style={{ borderBottom: `1px solid ${color.borderSubtle}`, backgroundColor: color.surface2 }}>
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {tokens.map(t => (
-            <span key={t.address} className="flex items-center gap-1">
-              <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: t.color, display: "inline-block" }} />
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "0.04em", color: color.textMuted }}>{t.symbol}</span>
-            </span>
-          ))}
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: color.textMuted }}>
-            {(fee / 10000).toFixed(2)}%
-          </span>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: boundaryCount === 0 ? color.success : color.warning }}>
-            {boundaryCount === 0 ? "● " : "◐ "}{healthLabel}
-          </span>
-        </div>
-      </div>
+    <div className="flex flex-col h-full" style={{  backgroundColor: color.surface1, width: "100%", position: "relative" }}>
 
-      {/* Header */}
+      {/* corner brackets */}
+      {([
+        { top: -1, left: -1,     borderTop: `2px solid ${color.textPrimary}`, borderLeft:  `2px solid ${color.textPrimary}` },
+        { top: -1, right: -1,    borderTop: `2px solid ${color.textPrimary}`, borderRight: `2px solid ${color.textPrimary}` },
+        { bottom: -1, left: -1,  borderBottom: `2px solid ${color.textPrimary}`, borderLeft:  `2px solid ${color.textPrimary}` },
+        { bottom: -1, right: -1, borderBottom: `2px solid ${color.textPrimary}`, borderRight: `2px solid ${color.textPrimary}` },
+      ] as React.CSSProperties[]).map((s, i) => (
+        <div key={i} style={{ position: "absolute", width: 18, height: 18, ...s }} />
+      ))}
+
+      {/* Header — breadcrumb + pills + settings */}
       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${color.borderSubtle}` }}>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", letterSpacing: "0.08em", textTransform: "uppercase" as const, color: color.textPrimary }}>
-          Swap
-        </span>
-        <button onClick={() => setShowSettings(v => !v)} style={{ color: showSettings ? color.accent : color.textMuted, lineHeight: 0, cursor: "pointer" }}>
-          <Settings size={14} strokeWidth={1.5} />
-        </button>
+        <div className="flex items-center gap-2">
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "0.06em", color: color.textMuted }}>Pool</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: color.textMuted }}>/</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "0.06em", fontWeight: 700, color: color.textSecondary }}>Swap</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* fee pill */}
+          {/* status pill */}
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", letterSpacing: "0.08em", textTransform: "uppercase" as const, color: boundaryCount === 0 ? "#8AE06C" : color.warning, backgroundColor: boundaryCount === 0 ? "#8AE06C12" : `${color.warning}12`, padding: "2px 8px" }}>
+            {boundaryCount === 0 ? "● All pegged" : "◐ Boundary"}
+          </span>
+          <button onClick={() => setShowSettings(v => !v)} style={{ lineHeight: 0, cursor: "pointer", marginLeft: 2 }}>
+            <Settings size={13} strokeWidth={1.5} color={showSettings ? color.textPrimary : color.textMuted} />
+          </button>
+        </div>
       </div>
 
       {showSettings && (
@@ -387,8 +446,7 @@ export function SwapWidget() {
               value={amountIn} onChange={setAmountIn} onTokenSelect={handleInSelect}
               isConnected={isConnected}
             />
-            <div className="flex items-center justify-center py-1"
-              style={{ borderTop: `1px solid ${color.borderSubtle}`, borderBottom: `1px solid ${color.borderSubtle}` }}>
+            <div className="flex items-center justify-center py-1">
               <button onClick={flip} className="flex items-center justify-center w-8 h-8"
                 style={{ border: `1px solid ${color.border}`, backgroundColor: color.surface1, cursor: "pointer" }}>
                 <ArrowDown size={13} color={color.textMuted} />
@@ -424,6 +482,132 @@ export function SwapWidget() {
           {btnLabel}
         </button>
       </div>
+
+      {/* Modal overlay */}
+      {swapResult && (() => {
+        const accentHex  = swapResult.success ? color.textPrimary : "#F56868";
+        // msg format: "Swapped 10.0000 DAI → 9.9950 USDT"
+        const halves     = swapResult.msg.replace("Swapped ", "").split(" → ");
+        const [inAmt = "", inSym = ""]   = (halves[0] ?? "").split(" ");
+        const [outAmt = "", outSym = ""] = (halves[1] ?? "").split(" ");
+        const SEGMENTS   = 24;
+        const filledSegs = swapResult.success ? SEGMENTS : Math.floor(SEGMENTS * 0.35);
+        const M          = { fontFamily: "var(--font-mono)" as const };
+
+        return (
+          <>
+            {/* backdrop with sparse grid lines like reference */}
+            <div onClick={() => setSwapResult(null)} style={{
+              position: "fixed", inset: 0, zIndex: 9998,
+              backgroundColor: "rgba(0,0,0,0.82)",
+              backgroundImage: `linear-gradient(${color.border}28 1px, transparent 1px), linear-gradient(90deg, ${color.border}28 1px, transparent 1px)`,
+              backgroundSize: "80px 80px",
+            }} />
+
+            {/* panel */}
+            <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 9999, width: 440, backgroundColor: color.surface1, boxShadow: "0 24px 80px rgba(0,0,0,0.7)" }}>
+
+              {/* corner brackets */}
+              {([
+                { top: -1, left: -1,      borderTop: `2px solid ${accentHex}`,    borderLeft:  `2px solid ${accentHex}` },
+                { top: -1, right: -1,     borderTop: `2px solid ${accentHex}`,    borderRight: `2px solid ${accentHex}` },
+                { bottom: -1, left: -1,   borderBottom: `2px solid ${accentHex}`, borderLeft:  `2px solid ${accentHex}` },
+                { bottom: -1, right: -1,  borderBottom: `2px solid ${accentHex}`, borderRight: `2px solid ${accentHex}` },
+              ] as React.CSSProperties[]).map((s, i) => (
+                <div key={i} style={{ position: "absolute", width: 20, height: 20, ...s }} />
+              ))}
+
+              {/* breadcrumb header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 20px", borderBottom: `1px solid ${color.borderSubtle}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ ...M, fontSize: "10px", letterSpacing: "0.06em", color: color.textMuted }}>Swap</span>
+                  <span style={{ ...M, fontSize: "10px", color: color.textMuted }}>/</span>
+                  <span style={{ ...M, fontSize: "10px", letterSpacing: "0.04em", fontWeight: 600, color: color.textSecondary }}>
+                    {swapResult.success ? "Transaction confirmed" : "Transaction failed"}
+                  </span>
+                </div>
+                <span style={{ ...M, fontSize: "9px", letterSpacing: "0.08em", textTransform: "uppercase" as const, color: accentHex, backgroundColor: `${accentHex}15`, padding: "3px 9px" }}>
+                  {swapResult.success ? "Confirmed" : "Failed"}
+                </span>
+              </div>
+
+              {/* swap flow */}
+              <div style={{ padding: "24px 20px 20px", display: "flex", alignItems: "center", gap: 12 }}>
+                {/* from */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ ...M, fontSize: "9px", letterSpacing: "0.1em", textTransform: "uppercase" as const, color: color.textMuted, marginBottom: 10 }}>From</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {(() => { const I = TOKEN_ICON_MAP[inSym.toUpperCase()]; return I ? <I size={28} variant="branded" /> : <TokenIcon symbol={inSym} size={28} />; })()}
+                    <div>
+                      <div style={{ fontFamily: typography.h2.family, fontSize: "26px", fontWeight: 500, letterSpacing: "-0.03em", color: color.textPrimary, lineHeight: 1 }}>{inAmt}</div>
+                      <div style={{ ...M, fontSize: "12px", letterSpacing: "0.06em", color: color.textMuted, marginTop: 4 }}>{inSym}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* arrow */}
+                <div style={{ display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 3, flexShrink: 0, paddingTop: 18 }}>
+                  <div style={{ width: 28, height: 1, backgroundColor: color.border }} />
+                  <div style={{ width: 0, height: 0, borderTop: "4px solid transparent", borderBottom: "4px solid transparent", borderLeft: `5px solid ${color.border}`, marginTop: -3 }} />
+                </div>
+
+                {/* to */}
+                <div style={{ flex: 1, textAlign: "right" as const }}>
+                  <div style={{ ...M, fontSize: "9px", letterSpacing: "0.1em", textTransform: "uppercase" as const, color: color.textMuted, marginBottom: 10 }}>To</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
+                    <div>
+                      <div style={{ fontFamily: typography.h2.family, fontSize: "26px", fontWeight: 500, letterSpacing: "-0.03em", color: accentHex, lineHeight: 1 }}>{outAmt}</div>
+                      <div style={{ ...M, fontSize: "12px", letterSpacing: "0.06em", color: color.textMuted, marginTop: 4 }}>{outSym}</div>
+                    </div>
+                    {(() => { const I = TOKEN_ICON_MAP[outSym.toUpperCase()]; return I ? <I size={28} variant="branded" /> : <TokenIcon symbol={outSym} size={28} />; })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* success / error message */}
+              <div style={{ margin: "0 20px 20px", padding: "10px 14px", backgroundColor: `${accentHex}10`, border: `1px solid ${accentHex}30`, display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: accentHex, flexShrink: 0, display: "inline-block" }} />
+                <span style={{ ...M, fontSize: "11px", letterSpacing: "0.03em", color: color.textSecondary }}>
+                  {swapResult.success
+                    ? `${inAmt} ${inSym} successfully swapped for ${outAmt} ${outSym} and deposited to your wallet.`
+                    : swapResult.msg}
+                </span>
+              </div>
+
+              {/* segmented progress bar */}
+              <div style={{ display: "flex", gap: 2, padding: "0 20px 20px" }}>
+                {Array.from({ length: SEGMENTS }).map((_, i) => (
+                  <div key={i} style={{ flex: 1, height: 3, backgroundColor: i < filledSegs ? accentHex : color.surface3 }} />
+                ))}
+              </div>
+
+              {/* divider */}
+              <div style={{ height: 1, backgroundColor: color.borderSubtle }} />
+
+              {/* footer */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px" }}>
+                {swapResult.hash ? (
+                  <a href={`https://sepolia.basescan.org/tx/${swapResult.hash}`} target="_blank" rel="noreferrer"
+                    style={{ ...M, fontSize: "10px", letterSpacing: "0.04em", color: color.textMuted, textDecoration: "none", display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ color: color.textMuted }}>TX</span>
+                    <span>{swapResult.hash.slice(0, 12)}…{swapResult.hash.slice(-6)}</span>
+                    <span style={{ color: accentHex }}>↗</span>
+                  </a>
+                ) : <span />}
+                <button onClick={() => setSwapResult(null)} style={{ ...M, fontSize: "9px", letterSpacing: "0.1em", textTransform: "uppercase" as const, color: color.textMuted, backgroundColor: "transparent", border: `1px solid ${color.border}`, padding: "5px 14px", cursor: "pointer" }}>
+                  Dismiss
+                </button>
+              </div>
+
+              {/* auto-dismiss bar */}
+              <div style={{ height: 2, backgroundColor: color.surface3 }}>
+                <div style={{ height: "100%", backgroundColor: accentHex, animation: "shrink 5s linear forwards" }} />
+              </div>
+              <style>{`@keyframes shrink { from { width: 100% } to { width: 0% } }`}</style>
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }
