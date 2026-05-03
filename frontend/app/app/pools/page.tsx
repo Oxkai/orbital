@@ -5,9 +5,19 @@ import { PoolCard } from "@/components/app/pools/PoolCard";
 import { usePool } from "@/lib/hooks/usePool";
 import { fmtUSD } from "@/lib/mock/data";
 import { POOL_ADDRESSES } from "@/lib/contracts";
+import type { Address } from "viem";
+
+const ZERO = "0x0000000000000000000000000000000000000000" as Address;
+function useAllPools(addresses: readonly Address[]) {
+  const a = usePool(addresses[0] ?? ZERO);
+  const b = usePool(addresses[1] ?? ZERO);
+  const c = usePool(addresses[2] ?? ZERO);
+  const d = usePool(addresses[3] ?? ZERO);
+  return [a, b, c, d].slice(0, addresses.length);
+}
 
 export default function PoolsPage() {
-  const poolHooks = POOL_ADDRESSES.map(addr => usePool(addr)); // eslint-disable-line react-hooks/rules-of-hooks
+  const poolHooks = useAllPools(POOL_ADDRESSES);
 
   const isLoading = poolHooks.some(p => p.isLoading);
   const isError   = poolHooks.every(p => p.isError);

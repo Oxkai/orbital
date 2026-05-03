@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
 import { injected } from "wagmi/connectors";
+import { baseSepolia } from "wagmi/chains";
 import { color, typography } from "@/constants";
 
 const LINKS = [
@@ -23,6 +24,8 @@ export function AppNav() {
   const { address, isConnected } = useAccount();
   const { connect, isPending }   = useConnect();
   const { disconnect }           = useDisconnect();
+  const chainId                  = useChainId();
+  const { switchChain }          = useSwitchChain();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -30,6 +33,7 @@ export function AppNav() {
   }, []);
 
   const showConnectedWallet = isMounted && isConnected && address;
+  const wrongChain = isMounted && isConnected && chainId !== baseSepolia.id;
 
   return (
     <nav
@@ -81,6 +85,23 @@ export function AppNav() {
 
       {/* Right — network badge + wallet */}
       <div className="flex items-center gap-2 shrink-0">
+        {wrongChain && (
+          <button
+            onClick={() => switchChain({ chainId: baseSepolia.id })}
+            style={{
+              border: `1px solid ${color.error}66`,
+              backgroundColor: `${color.error}12`,
+              color: color.error,
+              fontFamily: "var(--font-mono)",
+              fontSize: "10px",
+              letterSpacing: "0.06em",
+              padding: "4px 10px",
+              cursor: "pointer",
+            }}
+          >
+            Wrong network — switch to Base Sepolia
+          </button>
+        )}
         {showConnectedWallet ? (
           <button
             onClick={() => disconnect()}

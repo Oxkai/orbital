@@ -328,7 +328,7 @@ function Step2({ depegPrice, n, tokens, reserves, balances, usdAmount, setUsdAmo
             <input
               type="text" inputMode="decimal" placeholder="0"
               value={usdAmount}
-              onChange={e => { if (/^\d*\.?\d*$/.test(e.target.value)) setUsdAmount(e.target.value); }}
+              onChange={e => { if (/^\d*(?:\.\d*)?$/.test(e.target.value)) setUsdAmount(e.target.value); }}
               className="flex-1 bg-transparent outline-none"
               style={{ fontFamily: typography.h2.family, fontSize: "40px", letterSpacing: "-0.03em", color: usdAmount ? color.textPrimary : color.textMuted, lineHeight: "1" }}
             />
@@ -405,12 +405,12 @@ function Step3({ depegPrice, n, tokens, reserves, amount, allowances, fee, slipp
     usd:   amount * (totalReserve > 0 ? reserves[i] / totalReserve : 1 / n),
   }));
 
-  const rWad = BigInt(Math.floor(amount * 1e18));
+  const rWad = BigInt(Math.round(amount * 1e18));
   // Use reserve-ratio splits to determine per-token approval amounts
   const totalReserveAmt = reserves.reduce((a, b) => a + b, 0);
   const tokenAmountsWad = tokens.map((_, i) => {
     const pct = totalReserveAmt > 0 ? reserves[i] / totalReserveAmt : 1 / n;
-    return BigInt(Math.floor(pct * amount * 1e18));
+    return BigInt(Math.round(pct * amount * 1e18));
   });
   const needsApproval = tokens.findIndex((_, i) => allowances[i] < tokenAmountsWad[i]);
   const allApproved   = needsApproval === -1;
@@ -608,16 +608,16 @@ export default function AddLiquidityPage({ params }: { params: Promise<{ address
   function handleMint() {
     if (!address || !pool) return;
 
-    const rWad     = BigInt(Math.floor(amount * 1e18));
+    const rWad     = BigInt(Math.round(amount * 1e18));
     const kNorm    = kNormFromDepegPrice(n, clampedDepeg);
-    const kNormWAD = BigInt(Math.floor(kNorm * 1e18));
+    const kNormWAD = BigInt(Math.round(kNorm * 1e18));
     const kWad     = rWad * kNormWAD / WAD;
 
     const slippageBps = BigInt(Math.floor((1 - slippage / 100) * 1000));
     const totalReserveAmt = reserves.reduce((a, b) => a + b, 0);
     const amountsMin = tokens.map((_, i) => {
       const pct = totalReserveAmt > 0 ? reserves[i] / totalReserveAmt : 1 / n;
-      const tokenWad = BigInt(Math.floor(pct * amount * 1e18));
+      const tokenWad = BigInt(Math.round(pct * amount * 1e18));
       return tokenWad * slippageBps / 1000n;
     });
     const deadline   = BigInt(Math.floor(Date.now() / 1000) + 600);

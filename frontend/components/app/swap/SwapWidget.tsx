@@ -119,7 +119,7 @@ function TokenBox({ mode, token, otherIdx, tokenIdx, tokens, value, onChange, on
         <div className="flex-1 min-w-0">
           {mode === "in" ? (
             <input type="text" inputMode="decimal" placeholder="0" value={value}
-              onChange={e => { if (/^\d*\.?\d*$/.test(e.target.value)) onChange?.(e.target.value); }}
+              onChange={e => { if (/^\d*(?:\.\d*)?$/.test(e.target.value)) onChange?.(e.target.value); }}
               className="w-full bg-transparent outline-none"
               style={{ fontFamily: typography.h2.family, fontSize: "28px", letterSpacing: "-0.03em", fontWeight: 400, color: value ? color.textPrimary : color.textMuted, lineHeight: "1.1" }}
             />
@@ -301,7 +301,7 @@ export function SwapWidget() {
   const numIn = parseFloat(amountIn) || 0;
   const fee   = pool?.fee ?? 500;
 
-  const amtInBig = numIn > 0 ? BigInt(Math.floor(numIn * 1e18)) : 0n;
+  const amtInBig = numIn > 0 ? BigInt(Math.round(numIn * 1e18)) : 0n;
 
   const { data: quoteData } = useSimulateContract({
     address:      QUOTER_ADDRESS,
@@ -317,7 +317,7 @@ export function SwapWidget() {
   const inBalance      = tokensWithBalance[tokenIn]?.balance ?? 0;
   const isInsufficient = numIn > inBalance;
   const needsApproval  = isConnected && address
-    ? (allowances[tokenIn] ?? 0n) < BigInt(Math.floor(numIn * 1e18))
+    ? (allowances[tokenIn] ?? 0n) < BigInt(Math.round(numIn * 1e18))
     : false;
 
   const boundaryCount = pool?.kBound ? 1 : 0;
@@ -352,7 +352,7 @@ export function SwapWidget() {
     const outSym = tokensWithBalance[tokenOut]?.symbol ?? "";
     const amtIn  = amtInBig;
     const amtMin = amountOut > 0
-      ? BigInt(Math.floor(amountOut * (1 - slippage / 100) * 1e18))
+      ? BigInt(Math.round(amountOut * (1 - slippage / 100) * 1e18))
       : 0n;
     const dl     = BigInt(Math.floor(Date.now() / 1000) + deadline * 60);
     writeContract(

@@ -9,6 +9,15 @@ import { useTokenBalances, useTokenAllowances } from "@/lib/hooks/useTokenBalanc
 import { fmtUSD } from "@/lib/mock/data";
 import { POOL_ADDRESSES, PM_ADDRESS, PM_ABI, ERC20_ABI } from "@/lib/contracts";
 import { type Address, type Hash, maxUint256 } from "viem";
+
+const ZERO = "0x0000000000000000000000000000000000000000" as Address;
+function useAllPools(addresses: readonly Address[]) {
+  const a = usePool(addresses[0] ?? ZERO);
+  const b = usePool(addresses[1] ?? ZERO);
+  const c = usePool(addresses[2] ?? ZERO);
+  const d = usePool(addresses[3] ?? ZERO);
+  return [a, b, c, d].slice(0, addresses.length);
+}
 import { TokenPill } from "@/components/app/shared/TokenPill";
 import { Badge } from "@/components/app/shared/Badge";
 import { IncreaseLiquidityModal } from "@/components/app/lp/IncreaseLiquidityModal";
@@ -64,7 +73,7 @@ function AmountModal({ title, maxLabel, maxValue, onConfirm, onClose, isPending 
             <div className="flex items-baseline gap-2" style={{ border: `1px solid ${color.border}`, backgroundColor: color.surface2, padding: "10px 14px" }}>
               <span style={mono("16px", color.textMuted)}>$</span>
               <input type="text" inputMode="decimal" placeholder="0" value={val} autoFocus
-                onChange={e => { if (/^\d*\.?\d*$/.test(e.target.value)) setVal(e.target.value); }}
+                onChange={e => { if (/^\d*(?:\.\d*)?$/.test(e.target.value)) setVal(e.target.value); }}
                 className="flex-1 bg-transparent outline-none"
                 style={{ fontFamily: typography.h2.family, fontSize: "24px", letterSpacing: "-0.02em", color: val ? color.textPrimary : color.textMuted }}
               />
@@ -179,7 +188,7 @@ function PositionRow({
   function handleIncrease(amountStr: string) {
     if (!address) return;
     const usd    = parseFloat(amountStr);
-    const rWadNew = BigInt(Math.floor(usd * WAD));
+    const rWadNew = BigInt(Math.round(usd * WAD));
     const amountsMin = Array(n).fill(rWadNew / BigInt(n) * 995n / 1000n);
     const needsApproval = tokenAddrs.findIndex((_, i) => (allowances[i] ?? 0n) < rWadNew / BigInt(n));
     if (needsApproval >= 0) {
@@ -203,7 +212,7 @@ function PositionRow({
   function handleDecrease(amountStr: string) {
     if (!address) return;
     const usd    = parseFloat(amountStr);
-    const rWadOut = BigInt(Math.floor(usd * WAD));
+    const rWadOut = BigInt(Math.round(usd * WAD));
     const amountsMin = Array(n).fill(rWadOut / BigInt(n) * 995n / 1000n);
     setPendingKind("decrease");
     setPendingUsd(usd);
@@ -327,7 +336,7 @@ export default function PositionsPage() {
   const { address } = useAccount();
 
   // Load all known pools so each position row gets the right token metadata
-  const poolHooks = POOL_ADDRESSES.map(addr => usePool(addr)); // eslint-disable-line react-hooks/rules-of-hooks
+  const poolHooks = useAllPools(POOL_ADDRESSES);
   const poolMap: Record<string, ReturnType<typeof usePool>["pool"]> = Object.fromEntries(
     POOL_ADDRESSES.map((addr, i) => [addr.toLowerCase(), poolHooks[i].pool])
   );
