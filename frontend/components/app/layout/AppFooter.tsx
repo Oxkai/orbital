@@ -3,10 +3,7 @@ import { color } from "@/constants";
 export function AppFooter() {
   return (
     <footer
-      className="shrink-0 flex items-center h-10 justify-between m-4 px-6"
-      style={{
-        backgroundColor: color.surface1,
-      }}
+      className="shrink-0 flex items-center h-12 justify-between px-4 md:px-12"
     >
       <span
         style={{

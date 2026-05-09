@@ -44,8 +44,8 @@ type Props = {
   sumX:   bigint;
 };
 
-const FONT = "Roboto, system-ui, -apple-system, sans-serif";
-const TICK_STYLE = { fontFamily: FONT, fontSize: 10, fill: color.textMuted };
+const FONT = "var(--font-mono), Menlo, Monaco, monospace";
+const TICK_STYLE = { fontFamily: FONT, fontSize: 10, fill: color.textMuted, letterSpacing: "0.04em" };
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -98,29 +98,9 @@ export function DepthChart({ ticks, n, rInt, kBound, sumX }: Props) {
   const yMax = totalR * 1.18;
 
   return (
-    <div style={{ backgroundColor: color.surface1, display: "flex", flexDirection: "column", height: "100%" }}>
-      {/* Header */}
-      <div
-        className="flex items-center justify-between px-4 py-3"
-        style={{ borderBottom: `1px solid ${color.borderSubtle}`, flexShrink: 0 }}
-      >
-        <span style={{ fontFamily: FONT, fontSize: 9, letterSpacing: "0.07em", textTransform: "uppercase", color: color.textMuted }}>
-          Liquidity Depth
-        </span>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <div style={{ width: 18, height: 6, backgroundColor: color.accent, opacity: 0.35, border: `1px solid ${color.accent}40` }} />
-            <span style={{ fontFamily: FONT, fontSize: 10, color: color.textMuted }}>active liquidity</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div style={{ width: 12, borderTop: `1.5px dashed ${color.accent}`, opacity: 0.8 }} />
-            <span style={{ fontFamily: FONT, fontSize: 10, color: color.textMuted }}>αNorm</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Chart — flex-1 so it fills the remaining height of the grid cell */}
-      <div style={{ flex: 1, minHeight: 0, padding: "12px 12px 10px 4px" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      {/* Chart canvas — parent panel provides surface + header */}
+      <div style={{ flex: 1, minHeight: 0, padding: "16px 16px 14px 4px" }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={pts} margin={{ top: 6, right: 8, bottom: 20, left: 10 }}>
             <defs>

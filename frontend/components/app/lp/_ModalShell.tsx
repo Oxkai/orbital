@@ -36,7 +36,7 @@ export function ModalShell({
       />
 
       {/* panel */}
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 9999, width: 460, backgroundColor: color.surface1, boxShadow: "0 24px 80px rgba(0,0,0,0.7)" }}>
+      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 9999, width: "min(460px, calc(100vw - 24px))", backgroundColor: color.surface1, boxShadow: "0 24px 80px rgba(0,0,0,0.7)" }}>
 
         {/* corner brackets */}
         {([

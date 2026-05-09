@@ -68,60 +68,32 @@ export function VsTable() {
           </h2>
         </div>
 
+        {/* Desktop table */}
         <div
-          className="grid grid-cols-12 gap-5 border border-dashed"
+          className="hidden md:grid grid-cols-12 gap-5 border border-dashed"
           style={{ borderColor: color.border }}
         >
           <div
             className="col-span-12 grid grid-cols-12 gap-5 py-3 border-b border-dashed"
-            style={{
-              borderColor: color.borderSubtle,
-              backgroundColor: color.surface1,
-            }}
+            style={{ borderColor: color.borderSubtle, backgroundColor: color.surface1 }}
           >
             <div
-              className="col-span-3 md:col-start-1 md:col-span-1 pl-2 md:pl-3"
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "10px",
-                letterSpacing: "0.08em",
-                color: color.textMuted,
-                textTransform: "uppercase",
-              }}
+              className="col-start-1 col-span-1 pl-3"
+              style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "0.08em", color: color.textMuted, textTransform: "uppercase" }}
             >
               #
             </div>
             <div
-              className="col-span-9 md:col-start-2 md:col-span-3"
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "10px",
-                letterSpacing: "0.08em",
-                color: color.textMuted,
-                textTransform: "uppercase",
-              }}
+              className="col-start-2 col-span-3"
+              style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "0.08em", color: color.textMuted, textTransform: "uppercase" }}
             >
               Property
             </div>
             {COLUMNS.map((c, ci) => (
               <div
                 key={c}
-                className={`col-span-6 ${
-                  ci === 0
-                    ? "md:col-start-5 md:col-span-2"
-                    : ci === 1
-                    ? "md:col-start-7 md:col-span-2"
-                    : ci === 2
-                    ? "md:col-start-9 md:col-span-2"
-                    : "md:col-start-11 md:col-span-2"
-                }`}
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "11px",
-                  letterSpacing: "0.06em",
-                  color: c === "Orbital" ? colors.purple.hex : color.textSecondary,
-                  textTransform: "uppercase",
-                }}
+                className={ci === 0 ? "col-start-5 col-span-2" : ci === 1 ? "col-start-7 col-span-2" : ci === 2 ? "col-start-9 col-span-2" : "col-start-11 col-span-2"}
+                style={{ fontFamily: "var(--font-mono)", fontSize: "11px", letterSpacing: "0.06em", color: c === "Orbital" ? colors.purple.hex : color.textSecondary, textTransform: "uppercase" }}
               >
                 {c}
               </div>
@@ -133,54 +105,28 @@ export function VsTable() {
               <div
                 key={row.property}
                 className="grid grid-cols-12 gap-5 py-3"
-                style={{
-                  borderBottom:
-                    ri < ROWS.length - 1 ? `1px dashed ${color.borderSubtle}` : "none",
-                }}
+                style={{ borderBottom: ri < ROWS.length - 1 ? `1px dashed ${color.borderSubtle}` : "none" }}
               >
                 <div
-                  className="col-span-3 md:col-start-1 md:col-span-1 pl-2 md:pl-3"
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "11px",
-                    color: color.textMuted,
-                    letterSpacing: "0.06em",
-                  }}
+                  className="col-start-1 col-span-1 pl-3"
+                  style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: color.textMuted, letterSpacing: "0.06em" }}
                 >
                   {String(ri + 1).padStart(2, "0")}
                 </div>
                 <div
-                  className="col-span-9 md:col-start-2 md:col-span-3"
-                  style={{
-                    fontFamily: typography.p2.family,
-                    fontSize: typography.p2.size,
-                    color: color.textSecondary,
-                  }}
+                  className="col-start-2 col-span-3"
+                  style={{ fontFamily: typography.p2.family, fontSize: typography.p2.size, color: color.textSecondary }}
                 >
                   {row.property}
                 </div>
-
                 {row.values.map((v, vi) => (
                   <div
                     key={vi}
-                    className={`col-span-6 ${
-                      vi === 0
-                        ? "md:col-start-5 md:col-span-2"
-                        : vi === 1
-                        ? "md:col-start-7 md:col-span-2"
-                        : vi === 2
-                        ? "md:col-start-9 md:col-span-2"
-                        : "md:col-start-11 md:col-span-2"
-                    }`}
+                    className={vi === 0 ? "col-start-5 col-span-2" : vi === 1 ? "col-start-7 col-span-2" : vi === 2 ? "col-start-9 col-span-2" : "col-start-11 col-span-2"}
                     style={{
                       fontFamily: vi === 3 ? "var(--font-mono)" : typography.p2.family,
                       fontSize: typography.p2.size,
-                      color:
-                        vi === 3
-                          ? colors.purple.hex
-                          : row.highlights?.[vi]
-                          ? color.textPrimary
-                          : color.textMuted,
+                      color: vi === 3 ? colors.purple.hex : row.highlights?.[vi] ? color.textPrimary : color.textMuted,
                       letterSpacing: vi === 3 ? "0.02em" : typography.p2.letterSpacing,
                     }}
                   >
@@ -190,6 +136,53 @@ export function VsTable() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Mobile cards */}
+        <div
+          className="md:hidden flex flex-col border border-dashed"
+          style={{ borderColor: color.border }}
+        >
+          {ROWS.map((row, ri) => (
+            <div
+              key={row.property}
+              style={{ borderBottom: ri < ROWS.length - 1 ? `1px dashed ${color.borderSubtle}` : "none" }}
+            >
+              {/* Property header */}
+              <div
+                className="flex items-baseline gap-2 px-4 py-3"
+                style={{ backgroundColor: color.surface1, borderBottom: `1px dashed ${color.borderSubtle}` }}
+              >
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: color.textMuted, letterSpacing: "0.06em" }}>
+                  {String(ri + 1).padStart(2, "0")}
+                </span>
+                <span style={{ fontFamily: typography.p2.family, fontSize: typography.p2.size, color: color.textSecondary }}>
+                  {row.property}
+                </span>
+              </div>
+
+              {/* Protocol rows */}
+              {COLUMNS.map((col, vi) => (
+                <div
+                  key={col}
+                  className="flex items-center justify-between px-4 py-2.5"
+                  style={{ borderBottom: vi < COLUMNS.length - 1 ? `1px dashed ${color.borderSubtle}22` : "none" }}
+                >
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "0.06em", color: col === "Orbital" ? colors.purple.hex : color.textMuted, textTransform: "uppercase" }}>
+                    {col}
+                  </span>
+                  <span style={{
+                    fontFamily: vi === 3 ? "var(--font-mono)" : typography.p2.family,
+                    fontSize: typography.p2.size,
+                    color: vi === 3 ? colors.purple.hex : row.highlights?.[vi] ? color.textPrimary : color.textMuted,
+                    letterSpacing: vi === 3 ? "0.02em" : typography.p2.letterSpacing,
+                  }}>
+                    {row.values[vi]}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
     </section>

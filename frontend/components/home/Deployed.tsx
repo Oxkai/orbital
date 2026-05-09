@@ -13,7 +13,7 @@ const GROUPS: { kind: string; label: string; items: Contract[] }[] = [
     label: "Core protocol",
     items: [
       { name: "Factory",               address: FACTORY_ADDRESS },
-      { name: "Pool (4-asset, 0.05%)", address: POOL_ADDRESS },
+      { name: "Pool (5-asset, 0.05%)", address: POOL_ADDRESS },
     ],
   },
   {
@@ -43,43 +43,23 @@ const MONO = "var(--font-mono)";
 function GroupHeader({ code, label, count }: { code: string; label: string; count: number }) {
   return (
     <div
-      className="grid grid-cols-12 items-center gap-5 px-5 py-3 border-b border-dashed"
+      className="border-b border-dashed"
       style={{ borderColor: color.borderSubtle, backgroundColor: color.bg }}
     >
-      <span
-        className="col-span-12 md:col-start-1 md:col-span-2"
-        style={{
-          fontFamily: MONO,
-          fontSize: "10px",
-          letterSpacing: "0.08em",
-          color: color.textMuted,
-        }}
-      >
-        {code}
-      </span>
-      <span
-        className="col-span-12 md:col-start-3 md:col-span-3"
-        style={{
-          fontFamily: typography.h3.family,
-          fontSize: "14px",
-          letterSpacing: "-0.01em",
-          color: color.textPrimary,
-          fontWeight: 500,
-        }}
-      >
-        {label}
-      </span>
-      <span
-        className="col-span-12 md:col-start-12 md:col-span-1 md:justify-self-end"
-        style={{
-          fontFamily: MONO,
-          fontSize: "10px",
-          letterSpacing: "0.08em",
-          color: color.textMuted,
-        }}
-      >
-        {String(count).padStart(2, "0")} CONTRACTS
-      </span>
+      {/* mobile */}
+      <div className="md:hidden flex items-center justify-between px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span style={{ fontFamily: MONO, fontSize: "9px", letterSpacing: "0.1em", color: color.textMuted }}>{code}</span>
+          <span style={{ fontFamily: typography.h3.family, fontSize: "13px", letterSpacing: "-0.01em", color: color.textPrimary, fontWeight: 500 }}>{label}</span>
+        </div>
+        <span style={{ fontFamily: MONO, fontSize: "9px", letterSpacing: "0.08em", color: color.textMuted }}>{String(count).padStart(2, "0")} CTR</span>
+      </div>
+      {/* desktop */}
+      <div className="hidden md:grid grid-cols-12 items-center gap-5 px-5 py-3">
+        <span className="col-start-1 col-span-2" style={{ fontFamily: MONO, fontSize: "10px", letterSpacing: "0.08em", color: color.textMuted }}>{code}</span>
+        <span className="col-start-3 col-span-3" style={{ fontFamily: typography.h3.family, fontSize: "14px", letterSpacing: "-0.01em", color: color.textPrimary, fontWeight: 500 }}>{label}</span>
+        <span className="col-start-12 col-span-1 justify-self-end" style={{ fontFamily: MONO, fontSize: "10px", letterSpacing: "0.08em", color: color.textMuted }}>{String(count).padStart(2, "0")} CONTRACTS</span>
+      </div>
     </div>
   );
 }

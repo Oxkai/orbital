@@ -9,6 +9,8 @@ import { useTokenBalances, useTokenAllowances } from "@/lib/hooks/useTokenBalanc
 import { fmtUSD } from "@/lib/mock/data";
 import { POOL_ADDRESSES, PM_ADDRESS, PM_ABI, ERC20_ABI } from "@/lib/contracts";
 import { type Address, type Hash, maxUint256 } from "viem";
+import { TokenDAI, TokenUSDT, TokenUSDC, TokenFRAX } from "@token-icons/react";
+import { X, Circle, CurrencyDollar, Pulse, TrendUp } from "@phosphor-icons/react";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as Address;
 function useAllPools(addresses: readonly Address[]) {
@@ -18,22 +20,99 @@ function useAllPools(addresses: readonly Address[]) {
   const d = usePool(addresses[3] ?? ZERO);
   return [a, b, c, d].slice(0, addresses.length);
 }
-import { TokenPill } from "@/components/app/shared/TokenPill";
-import { Badge } from "@/components/app/shared/Badge";
 import { IncreaseLiquidityModal } from "@/components/app/lp/IncreaseLiquidityModal";
 import { DecreaseLiquidityModal } from "@/components/app/lp/DecreaseLiquidityModal";
 import { CollectFeesModal }       from "@/components/app/lp/CollectFeesModal";
 import { BurnPositionModal }      from "@/components/app/lp/BurnPositionModal";
 import type { TokenAmount }       from "@/components/app/lp/IncreaseLiquidityModal";
-import { X } from "lucide-react";
 
 const WAD = 1e18;
 
-function mono(size = "12px", col: string = color.textSecondary) {
-  return { fontFamily: "var(--font-mono)" as const, fontSize: size, color: col as never };
+const TOKEN_ICON_MAP: Record<string, React.ElementType> = {
+  DAI: TokenDAI, USDT: TokenUSDT, USDC: TokenUSDC, FRAX: TokenFRAX,
+};
+const TOKEN_COLOR_MAP: Record<string, string> = { CRVUSD: "#FF6B35" };
+
+function TokenIcon({ symbol, size = 22 }: { symbol: string; size?: number }) {
+  const Icon = TOKEN_ICON_MAP[symbol.toUpperCase()];
+  if (Icon) return <Icon size={size} variant="branded" />;
+  const bg = TOKEN_COLOR_MAP[symbol.toUpperCase()] ?? "#555";
+  return (
+    <span style={{ width: size, height: size, borderRadius: "50%", backgroundColor: bg, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: Math.max(6, size * 0.38), color: "#fff", fontFamily: typography.caption.family, fontWeight: 700 }}>
+      {symbol.slice(0, 2).toUpperCase()}
+    </span>
+  );
 }
-function lbl() {
-  return { ...mono("9px", color.textMuted), letterSpacing: "0.07em", textTransform: "uppercase" as const };
+
+const LBL = {
+  fontFamily: typography.caption.family,
+  fontSize: typography.caption.size,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase" as const,
+  fontWeight: 500,
+};
+
+function body(size: "p1" | "p2" | "p3" | "caption" = "p2", c: string = color.textPrimary) {
+  const t = typography[size];
+  return {
+    fontFamily: t.family,
+    fontSize: t.size,
+    lineHeight: t.lineHeight,
+    letterSpacing: t.letterSpacing,
+    color: c,
+    fontVariantNumeric: "tabular-nums" as const,
+  };
+}
+
+function mono(size = "12px", col: string = color.textSecondary) {
+  return {
+    fontFamily: "var(--font-mono)" as const,
+    fontSize: size,
+    color: col as never,
+    fontVariantNumeric: "tabular-nums" as const,
+  };
+}
+
+function StatusPill({ healthy, label }: { healthy: boolean; label: string }) {
+  const c = healthy ? color.success : color.warning;
+  return (
+    <span
+      className="inline-flex items-center gap-1.5"
+      style={{
+        backgroundColor: `${c}1f`,
+        color: c,
+        fontFamily: typography.caption.family,
+        fontSize: "11px",
+        fontWeight: 500,
+        letterSpacing: "0.04em",
+        padding: "3px 9px",
+        borderRadius: 999,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <Circle size={6} color={c} weight="fill" />
+      {label}
+    </span>
+  );
+}
+
+function StatItem({ icon, label, value, accent }: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  accent?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-1.5">
+        <span style={{ color: color.textMuted, lineHeight: 0 }}>{icon}</span>
+        <span style={{ ...LBL, color: color.textMuted }}>{label}</span>
+      </div>
+      <span style={{ ...body("p1", accent ?? color.textPrimary), fontWeight: 500 }}>
+        {value}
+      </span>
+    </div>
+  );
 }
 
 // ─── Discriminated result union ───────────────────────────────────────────────
@@ -47,6 +126,54 @@ type TxResult =
 
 // ─── Amount modal (Increase / Decrease) ──────────────────────────────────────
 
+function ModalFrame({ children, width = 400 }: { children: React.ReactNode; width?: number }) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%,-50%)",
+        zIndex: 9999,
+        width: `min(${width}px, calc(100vw - 24px))`,
+        backgroundColor: color.bg,
+      }}
+      className="flex flex-col gap-px"
+    >
+      {children}
+    </div>
+  );
+}
+
+function ModalBackdrop({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9998,
+        backgroundColor: "rgba(0,0,0,0.85)",
+        backdropFilter: "blur(2px)",
+      }}
+    />
+  );
+}
+
+function ModalHeader({ title, onClose }: { title: string; onClose: () => void }) {
+  return (
+    <div
+      className="flex items-center justify-between px-5 py-3.5"
+      style={{ backgroundColor: color.surface1 }}
+    >
+      <span style={{ ...LBL, color: color.textMuted }}>{title}</span>
+      <button onClick={onClose} className="hover:opacity-100 opacity-70 transition-opacity">
+        <X size={13} color={color.textMuted} weight="regular" />
+      </button>
+    </div>
+  );
+}
+
 function AmountModal({ title, maxLabel, maxValue, onConfirm, onClose, isPending }: {
   title: string; maxLabel: string; maxValue: string;
   onConfirm: (amount: string) => void; onClose: () => void; isPending: boolean;
@@ -54,66 +181,138 @@ function AmountModal({ title, maxLabel, maxValue, onConfirm, onClose, isPending 
   const [val, setVal] = useState("");
   const num = parseFloat(val) || 0;
   const max = parseFloat(maxValue) || 0;
+  const valid = num > 0 && num <= max + 0.001 && !isPending;
+
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 9998, backgroundColor: "rgba(0,0,0,0.7)" }} />
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 9999, width: 380, backgroundColor: color.surface1, border: `1px solid ${color.border}` }}>
-        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${color.borderSubtle}` }}>
-          <span style={mono("11px", color.textSecondary)}>{title}</span>
-          <button onClick={onClose}><X size={13} color={color.textMuted} /></button>
-        </div>
-        <div className="p-4 flex flex-col gap-4">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span style={mono("10px", color.textMuted)}>USD amount</span>
-              <button onClick={() => setVal(maxValue)} style={{ ...mono("9px", color.accent), border: `1px solid ${color.accent}44`, padding: "1px 6px", cursor: "pointer" }}>
-                {maxLabel} {maxValue ? fmtUSD(parseFloat(maxValue)) : ""}
-              </button>
-            </div>
-            <div className="flex items-baseline gap-2" style={{ border: `1px solid ${color.border}`, backgroundColor: color.surface2, padding: "10px 14px" }}>
-              <span style={mono("16px", color.textMuted)}>$</span>
-              <input type="text" inputMode="decimal" placeholder="0" value={val} autoFocus
-                onChange={e => { if (/^\d*(?:\.\d*)?$/.test(e.target.value)) setVal(e.target.value); }}
-                className="flex-1 bg-transparent outline-none"
-                style={{ fontFamily: typography.h2.family, fontSize: "24px", letterSpacing: "-0.02em", color: val ? color.textPrimary : color.textMuted }}
-              />
-            </div>
+      <ModalBackdrop onClose={onClose} />
+      <ModalFrame>
+        <ModalHeader title={title} onClose={onClose} />
+
+        {/* Input row */}
+        <div className="px-5 py-5 flex flex-col gap-3" style={{ backgroundColor: color.surface1 }}>
+          <div className="flex items-center justify-between">
+            <span style={body("caption", color.textMuted)}>USD amount</span>
+            <button
+              onClick={() => setVal(maxValue)}
+              className="hover:opacity-90 transition-opacity"
+              style={{
+                fontFamily: typography.caption.family,
+                fontSize: "11px",
+                fontWeight: 500,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: color.accent,
+                backgroundColor: `${color.accent}1f`,
+                padding: "3px 9px",
+                borderRadius: 2,
+                cursor: "pointer",
+              }}
+            >
+              {maxLabel} {maxValue ? fmtUSD(parseFloat(maxValue)) : ""}
+            </button>
           </div>
-          <button disabled={num <= 0 || num > max + 0.001 || isPending} onClick={() => onConfirm(val)} className="w-full py-3"
-            style={{ backgroundColor: num > 0 && num <= max + 0.001 && !isPending ? color.textPrimary : color.surface2, color: num > 0 && num <= max + 0.001 && !isPending ? color.bg : color.textMuted, fontFamily: typography.p2.family, fontSize: typography.p2.size, fontWeight: 500, cursor: num <= 0 || isPending ? "not-allowed" : "pointer" }}>
+          <div className="flex items-baseline gap-2">
+            <span
+              style={{
+                fontFamily: typography.h1.family,
+                fontSize: "26px",
+                fontWeight: 500,
+                color: color.textMuted,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              $
+            </span>
+            <input
+              type="text" inputMode="decimal" placeholder="0" value={val} autoFocus
+              onChange={e => { if (/^\d*(?:\.\d*)?$/.test(e.target.value)) setVal(e.target.value); }}
+              className="flex-1 bg-transparent outline-none"
+              style={{
+                fontFamily: typography.h1.family,
+                fontSize: "32px",
+                letterSpacing: "-0.03em",
+                color: val ? color.textPrimary : color.textMuted,
+                lineHeight: 1,
+                fontVariantNumeric: "tabular-nums",
+                fontWeight: 500,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Action row */}
+        <div className="px-5 py-3" style={{ backgroundColor: color.surface1 }}>
+          <button
+            disabled={!valid}
+            onClick={() => onConfirm(val)}
+            className="w-full flex items-center justify-center h-11 hover:opacity-90 transition-opacity"
+            style={{
+              backgroundColor: valid ? color.textPrimary : color.surface2,
+              color: valid ? color.bg : color.textMuted,
+              fontFamily: typography.p2.family,
+              fontSize: typography.p2.size,
+              fontWeight: 500,
+              letterSpacing: "-0.01em",
+              cursor: !valid ? "not-allowed" : "pointer",
+            }}
+          >
             {isPending ? "Submitting…" : "Confirm"}
           </button>
         </div>
-      </div>
+      </ModalFrame>
     </>
   );
 }
 
-// ─── Confirm modal (Collect / Burn) ──────────────────────────────────────────
-
-function ConfirmModal({ title, body, confirmLabel, onConfirm, onClose, isPending, danger }: {
+function ConfirmModal({ title, body: bodyText, confirmLabel, onConfirm, onClose, isPending, danger }: {
   title: string; body: string; confirmLabel: string;
   onConfirm: () => void; onClose: () => void; isPending: boolean; danger?: boolean;
 }) {
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 9998, backgroundColor: "rgba(0,0,0,0.7)" }} />
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 9999, width: 360, backgroundColor: color.surface1, border: `1px solid ${color.border}` }}>
-        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${color.borderSubtle}` }}>
-          <span style={mono("11px", color.textSecondary)}>{title}</span>
-          <button onClick={onClose}><X size={13} color={color.textMuted} /></button>
+      <ModalBackdrop onClose={onClose} />
+      <ModalFrame width={380}>
+        <ModalHeader title={title} onClose={onClose} />
+
+        {/* Body */}
+        <div className="px-5 py-5" style={{ backgroundColor: color.surface1 }}>
+          <p style={{ ...body("p3", color.textSecondary), lineHeight: 1.6 }}>{bodyText}</p>
         </div>
-        <div className="p-4 flex flex-col gap-4">
-          <p style={mono("11px", color.textMuted)}>{body}</p>
-          <div className="flex gap-2">
-            <button onClick={onClose} className="flex-1 py-2.5" style={{ border: `1px solid ${color.border}`, color: color.textMuted, fontFamily: typography.p2.family, fontSize: typography.p2.size, cursor: "pointer", backgroundColor: "transparent" }}>Cancel</button>
-            <button disabled={isPending} onClick={onConfirm} className="flex-1 py-2.5"
-              style={{ backgroundColor: danger ? color.error : color.textPrimary, color: color.bg, fontFamily: typography.p2.family, fontSize: typography.p2.size, fontWeight: 500, cursor: isPending ? "not-allowed" : "pointer", opacity: isPending ? 0.6 : 1 }}>
-              {isPending ? "Submitting…" : confirmLabel}
-            </button>
-          </div>
+
+        {/* Actions */}
+        <div className="flex gap-2 px-5 py-3" style={{ backgroundColor: color.surface1 }}>
+          <button
+            onClick={onClose}
+            className="flex-1 flex items-center justify-center h-10 hover:opacity-90 transition-opacity"
+            style={{
+              backgroundColor: color.surface2,
+              color: color.textSecondary,
+              fontFamily: typography.p2.family,
+              fontSize: typography.p2.size,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            disabled={isPending}
+            onClick={onConfirm}
+            className="flex-1 flex items-center justify-center h-10 hover:opacity-90 transition-opacity"
+            style={{
+              backgroundColor: danger ? color.error : color.textPrimary,
+              color: color.bg,
+              fontFamily: typography.p2.family,
+              fontSize: typography.p2.size,
+              fontWeight: 500,
+              cursor: isPending ? "not-allowed" : "pointer",
+              opacity: isPending ? 0.6 : 1,
+            }}
+          >
+            {isPending ? "Submitting…" : confirmLabel}
+          </button>
         </div>
-      </div>
+      </ModalFrame>
     </>
   );
 }
@@ -251,56 +450,117 @@ function PositionRow({
     );
   }
 
+  const pairLabel = pool?.tokens.map(t => t.symbol).join(" / ") ?? "Pool";
+
   return (
     <>
-      <div style={{ backgroundColor: color.surface1, borderBottom: `1px solid ${color.border}` }}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <span style={{ ...mono("10px", color.textMuted), backgroundColor: color.surface2, padding: "1px 6px" }}>
-              #{tokenId.toString()}
-            </span>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {pool?.tokens.map(tk => <TokenPill key={tk.address} token={tk} size="sm" />)}
+      <div className="flex flex-col gap-px">
+        {/* ── Identity row ─────────────────────────────────────── */}
+        <div
+          className="flex items-center justify-between gap-3 px-5 py-4"
+          style={{ backgroundColor: color.surface1 }}
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="flex shrink-0 items-center">
+              {pool?.tokens.map((t, i) => (
+                <span
+                  key={t.address}
+                  style={{
+                    marginLeft: i === 0 ? 0 : -8,
+                    outline: `2px solid ${color.surface1}`,
+                    borderRadius: "50%",
+                    lineHeight: 0,
+                    position: "relative",
+                    zIndex: (pool?.tokens.length ?? 0) - i,
+                  }}
+                >
+                  <TokenIcon symbol={t.symbol} size={24} />
+                </span>
+              ))}
+            </div>
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <div className="flex items-center gap-2">
+                <span
+                  style={{
+                    fontFamily: typography.h3.family,
+                    fontSize: "17px",
+                    fontWeight: 500,
+                    letterSpacing: "-0.02em",
+                    color: color.textPrimary,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {pairLabel}
+                </span>
+                <span
+                  style={{
+                    ...body("caption", color.textMuted),
+                    backgroundColor: color.surface2,
+                    padding: "2px 7px",
+                    borderRadius: 2,
+                  }}
+                >
+                  #{tokenId.toString()}
+                </span>
+              </div>
+              <span style={body("caption", color.textMuted)}>
+                Tick #{tickIndex} · {pool?.tokens.length ?? 0}-asset pool
+              </span>
             </div>
           </div>
-          <Badge variant={tick.isInterior ? "success" : "warning"} dot>
-            {tick.isInterior ? "Active" : "Paused"}
-          </Badge>
+          <StatusPill healthy={tick.isInterior} label={tick.isInterior ? "Active" : "Paused"} />
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3">
-          {[
-            { label: "Liquidity", value: rUSD },
-            { label: "Tick",      value: `#${tickIndex}` },
-            { label: "Status",    value: tick.isInterior ? "Earning fees" : "Paused", accent: tick.isInterior },
-          ].map(s => (
-            <div key={s.label} className="px-4 py-3" style={{ backgroundColor: color.surface1 }}>
-              <div style={{ ...lbl(), marginBottom: 4 }}>{s.label}</div>
-              <div style={{ fontFamily: typography.h3.family, fontSize: "16px", fontWeight: 500, letterSpacing: "-0.02em", color: s.accent ? color.accent : color.textPrimary }}>
-                {s.value}
-              </div>
-            </div>
-          ))}
+        {/* ── Stats row ────────────────────────────────────────── */}
+        <div
+          className="grid grid-cols-3 px-5 py-4 gap-x-6"
+          style={{ backgroundColor: color.surface1 }}
+        >
+          <StatItem
+            icon={<CurrencyDollar size={11} weight="regular" />}
+            label="Liquidity"
+            value={rUSD}
+          />
+          <StatItem
+            icon={<Pulse size={11} weight="regular" />}
+            label="Tick"
+            value={`#${tickIndex}`}
+          />
+          <StatItem
+            icon={<TrendUp size={11} weight="regular" />}
+            label="Status"
+            value={tick.isInterior ? "Earning fees" : "Paused"}
+            accent={tick.isInterior ? color.success : color.warning}
+          />
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-2 px-4 py-3">
+        {/* ── Actions row ──────────────────────────────────────── */}
+        <div
+          className="flex flex-wrap gap-2 px-5 py-3"
+          style={{ backgroundColor: color.surface1 }}
+        >
           {([
             { label: "Increase", onClick: () => setModal({ type: "increase" }) },
             { label: "Decrease", onClick: () => setModal({ type: "decrease" }), disabled: rNum <= 0 },
             { label: "Collect",  onClick: () => setModal({ type: "collect" }) },
             { label: "Burn",     onClick: () => setModal({ type: "burn" }), danger: true },
           ] as { label: string; onClick: () => void; disabled?: boolean; danger?: boolean }[]).map(btn => (
-            <button key={btn.label} disabled={!!btn.disabled} onClick={btn.onClick}
+            <button
+              key={btn.label}
+              disabled={!!btn.disabled}
+              onClick={btn.onClick}
+              className="flex items-center justify-center h-9 px-4 hover:opacity-90 transition-opacity"
               style={{
-                backgroundColor: color.surface2,
-                color: btn.danger ? color.error : btn.disabled ? color.textMuted : color.textSecondary,
-                border: `1px solid ${btn.danger ? color.error + "44" : color.border}`,
-                fontFamily: typography.p3.family, fontSize: typography.p3.size, letterSpacing: "-0.01em",
-                padding: "6px 12px", cursor: btn.disabled ? "not-allowed" : "pointer", opacity: btn.disabled ? 0.4 : 1,
-              }}>
+                backgroundColor: btn.danger ? "transparent" : color.surface2,
+                color: btn.danger ? color.error : btn.disabled ? color.textMuted : color.textPrimary,
+                border: btn.danger ? `1px solid ${color.error}55` : "none",
+                fontFamily: typography.p2.family,
+                fontSize: typography.p2.size,
+                letterSpacing: "-0.01em",
+                cursor: btn.disabled ? "not-allowed" : "pointer",
+                opacity: btn.disabled ? 0.4 : 1,
+              }}
+            >
               {btn.label}
             </button>
           ))}
@@ -356,55 +616,75 @@ export default function PositionsPage() {
   }, [refetchPools, refetchPositions]);
 
   return (
-    <div className="flex flex-col overflow-hidden w-full" style={{ height: "calc(100vh - 5.5rem)" }}>
-      <div className="flex-1 min-h-0 grid grid-cols-[80px_1fr_80px]" style={{ border: `1px solid ${color.border}` }}>
+    <section className="flex-1 flex flex-col py-8 sm:py-10">
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <header className="flex flex-col gap-1.5 mb-7">
+        <h1
+          style={{
+            fontFamily: typography.h2.family,
+            fontSize: typography.h2.size,
+            lineHeight: typography.h2.lineHeight,
+            letterSpacing: typography.h2.letterSpacing,
+            fontWeight: 500,
+            color: color.textPrimary,
+          }}
+        >
+          Positions
+        </h1>
+        <p
+          style={{
+            fontFamily: typography.p2.family,
+            fontSize: typography.p2.size,
+            color: color.textMuted,
+            lineHeight: typography.p2.lineHeight,
+          }}
+        >
+          Manage your liquidity positions, collect fees, and adjust ranges.
+        </p>
+      </header>
 
-        {/* Left gutter */}
-        <div style={{ backgroundImage: `repeating-linear-gradient(45deg, ${color.borderSubtle} 0, ${color.borderSubtle} 1px, transparent 0, transparent 50%)`, backgroundSize: "12px 12px", borderRight: `1px solid ${color.border}` }} />
-
-        {/* Main column */}
-        <div className="flex-1 min-h-0 flex flex-col">
-          <div className="flex items-end justify-between px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${color.border}` }}>
-            <div>
-              <h1 style={{ fontFamily: typography.h2.family, fontSize: typography.h2.size, fontWeight: 500, letterSpacing: typography.h2.letterSpacing, color: color.textPrimary }}>
-                Positions
-              </h1>
-              <p style={{ fontFamily: typography.p2.family, fontSize: typography.p2.size, color: color.textMuted, marginTop: 4 }}>
-                {!address ? "Connect wallet to view positions" : isLoading ? "Loading…"
-                  : `${positions.length} position${positions.length !== 1 ? "s" : ""} · ${fmtUSD(totalR / 1e18)} total`}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            {!address ? (
-              <div className="px-5 py-4" style={mono("12px", color.textMuted)}>Connect your wallet to see your positions.</div>
-            ) : isLoading ? (
-              <div className="px-5 py-4" style={mono("12px", color.textMuted)}>Fetching positions…</div>
-            ) : positions.length === 0 ? (
-              <div className="px-5 py-4" style={mono("12px", color.textMuted)}>No positions found. Add liquidity to get started.</div>
-            ) : (
-              <div className="flex flex-col">
-                {positions.map(pos => (
-                  <PositionRow
-                    key={pos.tokenId.toString()}
-                    tokenId={pos.tokenId}
-                    poolAddress={pos.poolAddress}
-                    tickIndex={pos.tickIndex}
-                    rWad={pos.rWad}
-                    pool={poolMap[pos.poolAddress.toLowerCase()] ?? null}
-                    onActionDone={handleActionDone}
-                    onTxResult={setTxResult}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+      {/* ── Body ─────────────────────────────────────────────────── */}
+      {!address ? (
+        <div
+          className="flex items-center justify-center py-20"
+          style={{ backgroundColor: color.surface1 }}
+        >
+          <span style={body("p3", color.textMuted)}>
+            Connect your wallet to see your positions.
+          </span>
         </div>
-
-        {/* Right gutter */}
-        <div style={{ backgroundImage: `repeating-linear-gradient(45deg, ${color.borderSubtle} 0, ${color.borderSubtle} 1px, transparent 0, transparent 50%)`, backgroundSize: "12px 12px", borderLeft: `1px solid ${color.border}` }} />
-      </div>
+      ) : isLoading ? (
+        <div
+          className="flex items-center justify-center py-20"
+          style={{ backgroundColor: color.surface1 }}
+        >
+          <span style={body("p3", color.textMuted)}>Fetching positions…</span>
+        </div>
+      ) : positions.length === 0 ? (
+        <div
+          className="flex items-center justify-center py-20"
+          style={{ backgroundColor: color.surface1 }}
+        >
+          <span style={body("p3", color.textMuted)}>
+            No positions found. Add liquidity to get started.
+          </span>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {positions.map(pos => (
+            <PositionRow
+              key={pos.tokenId.toString()}
+              tokenId={pos.tokenId}
+              poolAddress={pos.poolAddress}
+              tickIndex={pos.tickIndex}
+              rWad={pos.rWad}
+              pool={poolMap[pos.poolAddress.toLowerCase()] ?? null}
+              onActionDone={handleActionDone}
+              onTxResult={setTxResult}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Per-action result modals */}
       {txResult?.kind === "increase" && (
@@ -439,19 +719,44 @@ export default function PositionsPage() {
       {/* Error modal */}
       {txResult?.kind === "error" && (
         <>
-          <div onClick={() => setTxResult(null)} style={{ position: "fixed", inset: 0, zIndex: 9998, backgroundColor: "rgba(0,0,0,0.75)" }} />
-          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 9999, width: 380, backgroundColor: color.surface1, border: `1px solid ${color.error}44` }}>
-            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${color.borderSubtle}` }}>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: color.error }}>{txResult.title} failed</span>
-              <button onClick={() => setTxResult(null)}><X size={13} color={color.textMuted} /></button>
+          <ModalBackdrop onClose={() => setTxResult(null)} />
+          <ModalFrame width={400}>
+            <div
+              className="flex items-center justify-between px-5 py-3.5"
+              style={{ backgroundColor: color.surface1 }}
+            >
+              <span
+                className="inline-flex items-center gap-1.5"
+                style={{
+                  backgroundColor: `${color.error}1f`,
+                  color: color.error,
+                  fontFamily: typography.caption.family,
+                  fontSize: "11px",
+                  fontWeight: 500,
+                  letterSpacing: "0.04em",
+                  padding: "3px 9px",
+                  borderRadius: 999,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Circle size={6} color={color.error} weight="fill" />
+                {txResult.title} failed
+              </span>
+              <button
+                onClick={() => setTxResult(null)}
+                className="hover:opacity-100 opacity-70 transition-opacity"
+              >
+                <X size={13} color={color.textMuted} weight="regular" />
+              </button>
             </div>
-            <div className="px-4 py-4">
-              <p style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: color.textMuted, lineHeight: 1.6, wordBreak: "break-word" as const }}>{txResult.msg}</p>
+            <div className="px-5 py-5" style={{ backgroundColor: color.surface1 }}>
+              <p style={{ ...body("p3", color.textSecondary), lineHeight: 1.6, wordBreak: "break-word" as const }}>
+                {txResult.msg}
+              </p>
             </div>
-            <div style={{ height: 2, backgroundColor: color.error, opacity: 0.4 }} />
-          </div>
+          </ModalFrame>
         </>
       )}
-    </div>
+    </section>
   );
 }
