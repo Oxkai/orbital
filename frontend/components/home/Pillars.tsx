@@ -103,7 +103,7 @@ export function Pillars() {
               >
                 <span className="col-span-12 md:col-span-2">{`// II / 01 / ${letter}`}</span>
                 <span className="col-span-12 md:col-span-10">{`// PRINCIPLES / ${p.tag}`}</span>
-               
+
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-12 gap-y-10 md:gap-x-10 py-20 md:py-12">
@@ -143,9 +143,9 @@ export function Pillars() {
                        fontFamily: typography.h2.family,
                         fontSize: "clamp(22px, 2.4vw, 32px)",
                         lineHeight: "1.35",
-            
+
                      color: color.textPrimary,
-                      
+
                     }}
                   >
                     {p.lede} {p.body}

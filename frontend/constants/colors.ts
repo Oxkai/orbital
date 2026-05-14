@@ -43,7 +43,7 @@ export const colors = {
   },
 } as const;
 
-export type ThemeName = "dark" | "light";
+export type ThemeName = "dark" | "light" | "sky";
 
 type ThemePalette = {
   success: string;
@@ -97,6 +97,23 @@ export const themePalettes: Record<ThemeName, ThemePalette> = {
     textPrimary: "#010101",
     textSecondary: "#303030",
     textMuted: "#797979",
+  },
+  sky: {
+    success: "#1F8A4D",
+    error: "#D9453A",
+    warning: "#C99317",
+    info: "#0F4C75",
+    accent: "#0A0A0A",
+    bg: "#FBFEFF",
+    surface1: "#EAF4F9",
+    surface2: "#DCEEF6",
+    surface3: "#B0D5E5",
+    surface4: "#88BAD0",
+    border: "#9CC4D6",
+    borderSubtle: "#BCDAE8",
+    textPrimary: "#0A0A0A",
+    textSecondary: "#2B2B2B",
+    textMuted: "#607886",
   },
 };
 

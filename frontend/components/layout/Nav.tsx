@@ -2,14 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Moon, Sun } from "lucide-react";
+import { Cloud, Moon, Sun } from "lucide-react";
 import { color, getThemeCssVariables, typography, type ThemeName } from "@/constants";
+
+const THEME_CYCLE: ThemeName[] = ["dark", "light", "sky"];
 
 export function Nav() {
   const [theme, setTheme] = useState<ThemeName>(() => {
     if (typeof window === "undefined") return "dark";
     const saved = window.localStorage.getItem("theme");
-    if (saved === "dark" || saved === "light") return saved;
+    if (saved === "dark" || saved === "light" || saved === "sky") return saved;
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
 
@@ -23,11 +25,24 @@ export function Nav() {
   useEffect(() => { applyTheme(theme); }, [applyTheme, theme]);
 
   const toggleTheme = () => {
-    const next = theme === "dark" ? "light" : "dark";
+    const idx = THEME_CYCLE.indexOf(theme);
+    const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
     setTheme(next);
     applyTheme(next);
     window.localStorage.setItem("theme", next);
   };
+
+  const themeIcon = theme === "dark"
+    ? <Sun size={16} strokeWidth={1.8} aria-hidden="true" />
+    : theme === "light"
+      ? <Cloud size={16} strokeWidth={1.8} aria-hidden="true" />
+      : <Moon size={16} strokeWidth={1.8} aria-hidden="true" />;
+
+  const themeTitle = theme === "dark"
+    ? "Switch to light mode"
+    : theme === "light"
+      ? "Switch to sky mode"
+      : "Switch to dark mode";
 
   return (
     <nav
@@ -62,12 +77,10 @@ export function Nav() {
             color: color.textPrimary,
             aspectRatio: "1 / 1",
           }}
-          aria-label="Toggle dark and light mode"
-          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          aria-label="Cycle color theme"
+          title={themeTitle}
         >
-          {theme === "dark"
-            ? <Sun size={16} strokeWidth={1.8} aria-hidden="true" />
-            : <Moon size={16} strokeWidth={1.8} aria-hidden="true" />}
+          {themeIcon}
         </button>
 
         <Link
