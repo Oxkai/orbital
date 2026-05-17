@@ -3,7 +3,7 @@ import { Roboto, Geist_Mono, Geist } from "next/font/google";
 import "./globals.css";
 import LayoutGrid from "@/components/layout/LayoutGrid";
 import { getThemeCssVariables } from "@/constants";
-import { Web3Provider } from "@/components/providers/Web3Provider";
+import { Web3ProviderShell } from "@/components/providers/Web3ProviderShell";
 import { cn } from "@/lib/utils";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
@@ -34,9 +34,9 @@ export default function RootLayout({
       <body
         className="min-h-full flex flex-col"
       >
-        <Web3Provider>
+        <Web3ProviderShell>
           {children}
-        </Web3Provider>
+        </Web3ProviderShell>
         {process.env.NODE_ENV === "development" && <LayoutGrid />}
       </body>
     </html>
