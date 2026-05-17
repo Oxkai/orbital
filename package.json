@@ -1,0 +1,7 @@
+{
+  "name": "orbital",
+  "private": true,
+  "scripts": {
+    "vercel-build": "cd frontend && npm install && next build"
+  }
+}
